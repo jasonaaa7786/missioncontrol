@@ -11,7 +11,22 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
       const configData = await readFile(configPath, 'utf-8');
       const config = JSON.parse(configData);
 
-      const agents = config.agents?.list || [];
+      // Filter: only HEYMACHA (ls-commander) and Livescape subagents
+      const allowedAgents = [
+        'ls-commander',     // HEYMACHA
+        'livescape-scout',
+        'livescape-pulse',
+        'livescape-radar',
+        'livescape-meta',
+        'livescape-audit',
+        'livescape-trends',
+        'livescape-brand',
+        'livescape-brain',
+      ];
+
+      const allAgents = config.agents?.list || [];
+      const agents = allAgents.filter((agent: any) => allowedAgents.includes(agent.id));
+      
       const synced = [];
 
       for (const agent of agents) {

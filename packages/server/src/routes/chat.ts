@@ -1,5 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 import type { ChatRequest } from '@mc/shared';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const chatRoutes: FastifyPluginAsync = async (fastify) => {
   // Get or create chat session
@@ -49,18 +53,39 @@ const chatRoutes: FastifyPluginAsync = async (fastify) => {
       },
     });
 
-    // TODO: Integrate with OpenClaw agent for actual response
-    // For now, echo a placeholder response
+    // Send to OpenClaw ls-commander agent (HEYMACHA)
+    let response = '[No response from HEYMACHA]';
+    try {
+      const command = `cd /root/livescape-marketing/ls-commander && openclaw chat --agent=ls-commander --message="${body.message.replace(/"/g, '\\"')}" --profile=livescape --timeout=30`;
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: 35000,
+        maxBuffer: 1024 * 1024 * 10, // 10MB
+      });
+      
+      if (stderr) {
+        fastify.log.warn({ stderr }, 'OpenClaw stderr output');
+      }
+      
+      if (stdout.trim()) {
+        response = stdout.trim();
+      }
+    } catch (err: any) {
+      fastify.log.error(err, 'Failed to send message to OpenClaw');
+      response = `Error communicating with HEYMACHA: ${err.message}`;
+    }
+
+    // Save assistant response
     const assistantMessage = await fastify.prisma.chatMessage.create({
       data: {
         sessionId,
         role: 'assistant',
-        content: `[Placeholder] Received: "${body.message}". OpenClaw integration pending.`,
+        content: response,
       },
     });
 
     return {
       sessionId,
+      response,
       userMessage,
       assistantMessage,
     };

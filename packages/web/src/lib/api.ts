@@ -215,3 +215,26 @@ export const files = {
       method: 'POST',
     }),
 };
+
+// Chat API
+export const chat = {
+  createSession: (projectId?: string) =>
+    fetchAPI<{ id: string; sessionId: string }>('/api/chat/session', {
+      method: 'POST',
+      body: JSON.stringify({ projectId }),
+    }),
+  
+  history: (sessionId: string) =>
+    fetchAPI<{ messages: any[] }>(`/api/chat/session/${sessionId}`),
+  
+  sendMessage: (sessionId: string, message: string) =>
+    fetchAPI<{ sessionId: string; response: string }>('/api/chat/message', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, message }),
+    }),
+  
+  deleteSession: (sessionId: string) =>
+    fetchAPI<void>(`/api/chat/session/${sessionId}`, {
+      method: 'DELETE',
+    }),
+};

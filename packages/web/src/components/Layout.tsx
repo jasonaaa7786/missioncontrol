@@ -25,6 +25,7 @@ export default function Layout() {
           <NavItem to="/agents" icon="🤖">Agents</NavItem>
           <NavItem to="/scheduler" icon="⏰">Scheduler</NavItem>
           <NavItem to="/documents" icon="📄">Documents</NavItem>
+          <NavItem to="/chat" icon="💬">Chat</NavItem>
           <NavItem to="/settings" icon="⚙️">Settings</NavItem>
         </nav>
 

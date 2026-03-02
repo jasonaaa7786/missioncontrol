@@ -2,19 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import * as api from '../lib/api';
 import type { Project, Task, Agent } from '@mc/shared';
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { TaskCard, DroppableColumn } from '../components/DnD';
 
-export default function ProjectDetailDnD() {
+export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -22,21 +11,12 @@ export default function ProjectDetailDnD() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    priority: 'medium' as 'low' | 'medium' | 'high',
     assignedAgent: '',
   });
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
 
   useEffect(() => {
     loadData();
@@ -82,6 +62,15 @@ export default function ProjectDetailDnD() {
     }
   };
 
+  const handleStatusChange = async (taskId: string, newStatus: Task['status']) => {
+    try {
+      await api.tasks.update(taskId, { status: newStatus });
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update task');
+    }
+  };
+
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm('Delete this task?')) return;
     
@@ -90,30 +79,6 @@ export default function ProjectDetailDnD() {
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to delete task');
-    }
-  };
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const taskId = active.id as string;
-    const newStatus = over.id as Task['status'];
-
-    const task = tasks.find(t => t.id === taskId);
-    if (!task || task.status === newStatus) return;
-
-    try {
-      await api.tasks.update(taskId, { status: newStatus });
-      await loadData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to update task');
     }
   };
 
@@ -129,7 +94,12 @@ export default function ProjectDetailDnD() {
     { status: 'done', label: 'Done', color: 'bg-green-700' },
   ];
 
-  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
+  const priorityColors = {
+    low: 'text-gray-400',
+    medium: 'text-yellow-400',
+    high: 'text-orange-400',
+    critical: 'text-red-400',
+  };
 
   if (loading) {
     return (
@@ -251,45 +221,65 @@ export default function ProjectDetailDnD() {
         </div>
       )}
 
-      {/* Drag and Drop Task Board */}
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid grid-cols-5 gap-4">
-          {statusColumns.map(({ status, label, color }) => {
-            const columnTasks = getTasksByStatus(status);
-            return (
-              <DroppableColumn key={status} id={status} label={label} color={color} count={columnTasks.length}>
-                <SortableContext items={columnTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-3">
-                    {columnTasks.map(task => {
-                      const assignedAgent = agents.find(a => a.id === task.assignedAgent);
-                      return (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          agent={assignedAgent}
-                          onDelete={handleDeleteTask}
-                        />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-              </DroppableColumn>
-            );
-          })}
-        </div>
-
-        <DragOverlay>
-          {activeTask && (
-            <div className="bg-gray-700 rounded p-3 border border-blue-500 shadow-2xl opacity-90">
-              <h4 className="text-white font-medium text-sm">{activeTask.title}</h4>
+      {/* Task Board */}
+      <div className="grid grid-cols-5 gap-4">
+        {statusColumns.map(({ status, label, color }) => {
+          const columnTasks = getTasksByStatus(status);
+          return (
+            <div key={status} className="bg-gray-800 rounded-lg border border-gray-700">
+              <div className={`${color} px-4 py-3 rounded-t-lg`}>
+                <h3 className="font-semibold text-white">
+                  {label} ({columnTasks.length})
+                </h3>
+              </div>
+              <div className="p-3 space-y-3 min-h-[200px]">
+                {columnTasks.map(task => {
+                  const assignedAgent = agents.find(a => a.id === task.assignedAgent);
+                  return (
+                    <div
+                      key={task.id}
+                      className="bg-gray-700 rounded p-3 border border-gray-600 hover:border-gray-500"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-white font-medium text-sm flex-1">{task.title}</h4>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="text-gray-400 hover:text-red-400 text-xs ml-2"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {task.description && (
+                        <p className="text-gray-400 text-xs mb-2">{task.description}</p>
+                      )}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={priorityColors[task.priority]}>
+                          {task.priority.toUpperCase()}
+                        </span>
+                        {assignedAgent && (
+                          <span className="text-gray-500">{assignedAgent.name || assignedAgent.id}</span>
+                        )}
+                      </div>
+                      {/* Status change dropdown */}
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
+                        className="w-full mt-2 px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-xs"
+                      >
+                        <option value="backlog">Backlog</option>
+                        <option value="planned">Planned</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="done">Done</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+          );
+        })}
+      </div>
 
       {tasks.length === 0 && (
         <div className="text-center py-12 text-gray-400">

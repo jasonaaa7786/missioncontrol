@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as api from '../lib/api';
 import type { Project } from '@mc/shared';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 interface FileItem {
   name: string;
@@ -16,13 +14,11 @@ export default function Documents() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [filteredFiles, setFilteredFiles] = useState<FileItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [currentPath, setCurrentPath] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadProjects();
@@ -36,18 +32,6 @@ export default function Documents() {
       }
     }
   }, [selectedProject]);
-
-  useEffect(() => {
-    // Filter files based on search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      setFilteredFiles(
-        files.filter(file => file.name.toLowerCase().includes(query))
-      );
-    } else {
-      setFilteredFiles(files);
-    }
-  }, [searchQuery, files]);
 
   const loadProjects = async () => {
     try {
@@ -68,7 +52,6 @@ export default function Documents() {
       const data = await api.files.browse(path);
       setFiles(data || []);
       setCurrentPath(path);
-      setSearchQuery(''); // Reset search when changing directories
     } catch (err: any) {
       setError(err.message || 'Failed to browse directory');
       setFiles([]);
@@ -107,6 +90,7 @@ export default function Documents() {
   };
 
   const handleDownload = (file: FileItem) => {
+    // Create download link
     const blob = new Blob([fileContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -128,6 +112,29 @@ export default function Documents() {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString();
+  };
+
+  // Simple markdown renderer (basic support)
+  const renderMarkdown = (content: string) => {
+    let html = content
+      // Headers
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-white mt-4 mb-2">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-white mt-6 mb-3">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-white mt-8 mb-4">$1</h1>')
+      // Bold
+      .replace(/\*\*(.*?)\*\*/gim, '<strong class="font-bold text-white">$1</strong>')
+      // Italic
+      .replace(/\*(.*?)\*/gim, '<em class="italic">$1</em>')
+      // Code blocks
+      .replace(/```([\s\S]*?)```/gim, '<pre class="bg-gray-900 p-3 rounded my-2 overflow-x-auto"><code class="text-sm text-gray-300">$1</code></pre>')
+      // Inline code
+      .replace(/`(.*?)`/gim, '<code class="bg-gray-700 px-1 py-0.5 rounded text-sm text-blue-300">$1</code>')
+      // Links
+      .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" class="text-blue-400 hover:underline" target="_blank">$1</a>')
+      // Line breaks
+      .replace(/\n/gim, '<br/>');
+
+    return html;
   };
 
   return (
@@ -178,23 +185,12 @@ export default function Documents() {
             {currentPath || '/'}
           </div>
 
-          {/* Search */}
-          <div className="mb-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search files..."
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm placeholder-gray-400"
-            />
-          </div>
-
           {loading && !selectedFile && (
             <p className="text-gray-400 text-sm">Loading...</p>
           )}
 
-          <div className="space-y-1 max-h-[600px] overflow-y-auto">
-            {filteredFiles.map((file, idx) => (
+          <div className="space-y-1">
+            {files.map((file, idx) => (
               <button
                 key={idx}
                 onClick={() => handleFileClick(file)}
@@ -217,9 +213,9 @@ export default function Documents() {
             ))}
           </div>
 
-          {filteredFiles.length === 0 && !loading && (
+          {files.length === 0 && !loading && (
             <p className="text-gray-500 text-sm text-center py-8">
-              {searchQuery ? 'No files match your search' : 'No files found'}
+              No files found
             </p>
           )}
         </div>
@@ -248,56 +244,10 @@ export default function Documents() {
               ) : (
                 <div className="bg-gray-900 rounded p-4 overflow-auto max-h-[600px]">
                   {selectedFile.name.endsWith('.md') ? (
-                    <div className="prose prose-invert max-w-none">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                        h1: ({ children }) => <h1 className="text-3xl font-bold text-white mt-6 mb-4">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-2xl font-bold text-white mt-5 mb-3">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-xl font-bold text-white mt-4 mb-2">{children}</h3>,
-                        p: ({ children }) => <p className="text-gray-300 mb-3">{children}</p>,
-                        a: ({ href, children }) => (
-                          <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
-                            {children}
-                          </a>
-                        ),
-                        code: ({ inline, children, className }: any) =>
-                          inline ? (
-                            <code className="bg-gray-800 px-1.5 py-0.5 rounded text-blue-300 text-sm">
-                              {children}
-                            </code>
-                          ) : (
-                            <pre className="bg-gray-950 p-4 rounded my-3 overflow-x-auto">
-                              <code className={`text-sm text-gray-300 ${className}`}>{children}</code>
-                            </pre>
-                          ),
-                        ul: ({ children }) => <ul className="list-disc list-inside text-gray-300 mb-3">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal list-inside text-gray-300 mb-3">{children}</ol>,
-                        li: ({ children }) => <li className="mb-1">{children}</li>,
-                        blockquote: ({ children }) => (
-                          <blockquote className="border-l-4 border-gray-600 pl-4 italic text-gray-400 my-3">
-                            {children}
-                          </blockquote>
-                        ),
-                        table: ({ children }) => (
-                          <div className="overflow-x-auto my-4">
-                            <table className="min-w-full border border-gray-700">{children}</table>
-                          </div>
-                        ),
-                        thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
-                        th: ({ children }) => (
-                          <th className="border border-gray-700 px-4 py-2 text-left text-white font-semibold">
-                            {children}
-                          </th>
-                        ),
-                        td: ({ children }) => (
-                          <td className="border border-gray-700 px-4 py-2 text-gray-300">{children}</td>
-                        ),
-                      }}
-                      >
-                        {fileContent}
-                      </ReactMarkdown>
-                    </div>
+                    <div 
+                      className="prose prose-invert max-w-none text-gray-300"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(fileContent) }}
+                    />
                   ) : (
                     <pre className="text-sm text-gray-300 whitespace-pre-wrap">
                       {fileContent}
