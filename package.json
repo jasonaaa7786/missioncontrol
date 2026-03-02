@@ -1,0 +1,30 @@
+{
+  "name": "mission-control",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw Mission Control - Local multi-project dashboard",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:server": "npm run dev --workspace=@mc/server",
+    "dev:web": "npm run dev --workspace=@mc/web",
+    "build": "npm run build --workspaces",
+    "build:server": "npm run build --workspace=@mc/server",
+    "build:web": "npm run build --workspace=@mc/web",
+    "start": "npm run start --workspace=@mc/server",
+    "typecheck": "npm run typecheck --workspaces",
+    "db:migrate": "npm run migrate --workspace=@mc/server",
+    "db:seed": "npm run seed --workspace=@mc/server",
+    "db:studio": "npm run studio --workspace=@mc/server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

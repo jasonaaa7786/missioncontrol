@@ -1,0 +1,127 @@
+// Mission Control Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:~/.mission-control/data/mc.db"
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  status      String   @default("active") // active, paused, archived
+  tags        String   @default("[]") // JSON array
+  workingDir  String
+  outputDir   String?
+  defaultAgent String?
+  gitRepo     String?
+  cadence     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks     Task[]
+  schedules Schedule[]
+  files     FileIndex[]
+  chatSessions ChatSession[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Task {
+  id            String   @id @default(uuid())
+  projectId     String
+  title         String
+  description   String?
+  status        String   @default("backlog") // backlog, planned, in_progress, blocked, done
+  priority      String   @default("medium") // low, medium, high, critical
+  assignedAgent String?
+  position      Int      @default(0)
+  dueAt         DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Agent {
+  id        String   @id
+  name      String
+  workspace String
+  agentDir  String?
+  model     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model Schedule {
+  id         String    @id @default(uuid())
+  projectId  String?
+  name       String
+  cronExpr   String
+  timezone   String    @default("UTC")
+  agentId    String
+  message    String
+  enabled    Boolean   @default(true)
+  lastRunAt  DateTime?
+  nextRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([enabled])
+  @@index([nextRunAt])
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  projectId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+  project  Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid())
+  sessionId String
+  role      String      // user, assistant, system
+  content   String
+  timestamp DateTime    @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, timestamp])
+}
+
+model FileIndex {
+  id         String   @id @default(uuid())
+  projectId  String
+  path       String
+  name       String
+  type       String   // file, directory
+  size       Int?
+  modifiedAt DateTime
+  indexedAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, path])
+  @@index([projectId])
+}
