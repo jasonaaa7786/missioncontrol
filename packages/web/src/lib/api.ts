@@ -37,10 +37,16 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(url.toString(), {
-    ...fetchOptions,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(url.toString(), {
+      ...fetchOptions,
+      headers,
+    });
+  } catch (err) {
+    // Network error (can't reach server)
+    throw new APIError(0, 'Cannot connect to server. Please check if backend is running.');
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
