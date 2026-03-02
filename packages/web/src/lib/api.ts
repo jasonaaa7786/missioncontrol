@@ -1,0 +1,203 @@
+// API client with authentication
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3001';
+
+interface FetchOptions extends RequestInit {
+  params?: Record<string, string>;
+}
+
+export class APIError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  const { params, ...fetchOptions } = options;
+  
+  // Build URL with query params
+  const url = new URL(endpoint, API_BASE);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.append(key, value);
+    });
+  }
+
+  // Add auth token if available
+  const token = localStorage.getItem('auth_token');
+  const headers = new Headers(fetchOptions.headers);
+  
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  
+  if (fetchOptions.body && typeof fetchOptions.body === 'object') {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(url.toString(), {
+    ...fetchOptions,
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new APIError(response.status, error.error || 'Request failed');
+  }
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json();
+}
+
+// Auth API
+export const auth = {
+  login: (username: string, password: string) =>
+    fetchAPI<{ user: any; token: string }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+
+  register: (username: string, password: string, name?: string) =>
+    fetchAPI<{ user: any; token: string }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, name }),
+    }),
+
+  me: () => fetchAPI<any>('/api/auth/me'),
+
+  users: () => fetchAPI<any[]>('/api/auth/users'),
+};
+
+// Projects API
+export const projects = {
+  list: () => fetchAPI<any[]>('/api/projects'),
+  
+  get: (id: string) => fetchAPI<any>(`/api/projects/${id}`),
+  
+  create: (data: any) =>
+    fetchAPI<any>('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: any) =>
+    fetchAPI<any>(`/api/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<void>(`/api/projects/${id}`, {
+      method: 'DELETE',
+    }),
+  
+  stats: (id: string) => fetchAPI<Record<string, number>>(`/api/projects/${id}/stats`),
+};
+
+// Tasks API
+export const tasks = {
+  listByProject: (projectId: string) =>
+    fetchAPI<any[]>(`/api/tasks/project/${projectId}`),
+  
+  get: (id: string) => fetchAPI<any>(`/api/tasks/${id}`),
+  
+  create: (projectId: string, data: any) =>
+    fetchAPI<any>(`/api/tasks/project/${projectId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: any) =>
+    fetchAPI<any>(`/api/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<void>(`/api/tasks/${id}`, {
+      method: 'DELETE',
+    }),
+  
+  reorder: (taskId: string, newStatus: string, newPosition: number) =>
+    fetchAPI<{ success: boolean }>('/api/tasks/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ taskId, newStatus, newPosition }),
+    }),
+};
+
+// Agents API
+export const agents = {
+  list: () => fetchAPI<any[]>('/api/agents'),
+  
+  get: (id: string) => fetchAPI<any>(`/api/agents/${id}`),
+  
+  sync: () => fetchAPI<{ synced: number; agents: any[] }>('/api/agents/sync', {
+    method: 'POST',
+  }),
+  
+  toggle: (id: string) =>
+    fetchAPI<any>(`/api/agents/${id}/toggle`, {
+      method: 'PATCH',
+    }),
+};
+
+// Schedules API
+export const schedules = {
+  list: (projectId?: string) =>
+    fetchAPI<any[]>('/api/schedules', {
+      params: projectId ? { projectId } : undefined,
+    }),
+  
+  get: (id: string) => fetchAPI<any>(`/api/schedules/${id}`),
+  
+  create: (data: any) =>
+    fetchAPI<any>('/api/schedules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: any) =>
+    fetchAPI<any>(`/api/schedules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<void>(`/api/schedules/${id}`, {
+      method: 'DELETE',
+    }),
+  
+  toggle: (id: string) =>
+    fetchAPI<any>(`/api/schedules/${id}/toggle`, {
+      method: 'POST',
+    }),
+  
+  run: (id: string) =>
+    fetchAPI<{ success: boolean; schedule: any }>(`/api/schedules/${id}/run`, {
+      method: 'POST',
+    }),
+};
+
+// Files API
+export const files = {
+  browse: (path: string) =>
+    fetchAPI<any[]>('/api/files/browse', {
+      params: { path },
+    }),
+  
+  open: (path: string) =>
+    fetchAPI<{ success: boolean }>('/api/files/open', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+  
+  index: (projectId: string) =>
+    fetchAPI<{ success: boolean; message?: string }>(`/api/files/index/${projectId}`, {
+      method: 'POST',
+    }),
+};
