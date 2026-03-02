@@ -45,10 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
+    console.log('AuthContext: Attempting login for:', username);
     const response = await auth.login(username, password);
+    console.log('AuthContext: Login response:', response);
     setUser(response.user);
     setToken(response.token);
     localStorage.setItem('auth_token', response.token);
+    console.log('AuthContext: Login successful, token stored');
   };
 
   const register = async (username: string, password: string, name?: string) => {

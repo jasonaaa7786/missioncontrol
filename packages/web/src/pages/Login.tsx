@@ -34,13 +34,16 @@ export default function Login() {
     setLoading(true);
 
     try {
+      console.log('Login form: Submitting', { mode, username, passwordLength: password.length });
       if (mode === 'login') {
         await login(username, password);
       } else {
         await register(username, password, name || undefined);
       }
+      console.log('Login form: Auth successful, navigating to dashboard');
       navigate('/dashboard');
     } catch (err) {
+      console.error('Login form: Error caught:', err);
       if (err instanceof APIError) {
         setError(err.message);
       } else {
