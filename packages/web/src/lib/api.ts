@@ -39,7 +39,8 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers.set('Authorization', `Bearer ${token}`);
   }
   
-  if (fetchOptions.body && typeof fetchOptions.body === 'object') {
+  // Set Content-Type for JSON requests
+  if (fetchOptions.body && typeof fetchOptions.body === 'string') {
     headers.set('Content-Type', 'application/json');
   }
 
