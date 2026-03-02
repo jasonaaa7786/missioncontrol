@@ -29,6 +29,9 @@ const fastify = Fastify({
 // Plugins
 await fastify.register(cors, {
   origin: true, // Allow all origins in dev (restrict in production)
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 });
 
 await fastify.register(websocket);
