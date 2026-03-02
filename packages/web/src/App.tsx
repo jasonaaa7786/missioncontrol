@@ -8,6 +8,7 @@ import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import Agents from './pages/Agents';
 import Scheduler from './pages/Scheduler';
+import Documents from './pages/Documents';
 import Settings from './pages/Settings';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="agents" element={<Agents />} />
             <Route path="scheduler" element={<Scheduler />} />
+            <Route path="documents" element={<Documents />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
