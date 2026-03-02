@@ -16,7 +16,7 @@
   "dependencies": {
     "@fastify/cors": "^9.0.1",
     "@fastify/websocket": "^10.0.1",
-    "@mc/shared": "workspace:*",
+    "@mc/shared": "file:../shared",
     "@prisma/client": "^5.9.1",
     "fastify": "^4.25.2",
     "ws": "^8.16.0",
