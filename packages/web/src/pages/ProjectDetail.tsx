@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import api from '../lib/api';
+import * as api from '../lib/api';
 import type { Project, Task, Agent } from '@mc/shared';
 
 export default function ProjectDetail() {
@@ -87,9 +87,9 @@ export default function ProjectDetail() {
   };
 
   const statusColumns: { status: Task['status']; label: string; color: string }[] = [
-    { status: 'todo', label: 'To Do', color: 'bg-gray-700' },
+    { status: 'backlog', label: 'Backlog', color: 'bg-gray-700' },
+    { status: 'planned', label: 'Planned', color: 'bg-purple-700' },
     { status: 'in_progress', label: 'In Progress', color: 'bg-blue-700' },
-    { status: 'in_review', label: 'In Review', color: 'bg-yellow-700' },
     { status: 'blocked', label: 'Blocked', color: 'bg-red-700' },
     { status: 'done', label: 'Done', color: 'bg-green-700' },
   ];
@@ -97,7 +97,8 @@ export default function ProjectDetail() {
   const priorityColors = {
     low: 'text-gray-400',
     medium: 'text-yellow-400',
-    high: 'text-red-400',
+    high: 'text-orange-400',
+    critical: 'text-red-400',
   };
 
   if (loading) {
@@ -181,6 +182,7 @@ export default function ProjectDetail() {
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
+                  <option value="critical">Critical</option>
                 </select>
               </div>
               <div className="mb-4">
@@ -264,9 +266,9 @@ export default function ProjectDetail() {
                         onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
                         className="w-full mt-2 px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-xs"
                       >
-                        <option value="todo">To Do</option>
+                        <option value="backlog">Backlog</option>
+                        <option value="planned">Planned</option>
                         <option value="in_progress">In Progress</option>
-                        <option value="in_review">In Review</option>
                         <option value="blocked">Blocked</option>
                         <option value="done">Done</option>
                       </select>

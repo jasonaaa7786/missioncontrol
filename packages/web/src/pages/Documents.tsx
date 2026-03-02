@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../lib/api';
+import * as api from '../lib/api';
 import type { Project } from '@mc/shared';
 
 interface FileItem {
@@ -50,8 +50,8 @@ export default function Documents() {
       setLoading(true);
       setError('');
       const data = await api.files.browse(path);
-      setFiles(data.files || []);
-      setCurrentPath(data.path);
+      setFiles(data || []);
+      setCurrentPath(path);
     } catch (err: any) {
       setError(err.message || 'Failed to browse directory');
       setFiles([]);
@@ -69,11 +69,11 @@ export default function Documents() {
       try {
         setLoading(true);
         setError('');
-        const data = await api.files.open(file.path);
+        const data = await api.files.read(file.path);
         setSelectedFile(file);
         setFileContent(data.content);
       } catch (err: any) {
-        setError(err.message || 'Failed to open file');
+        setError(err.message || 'Failed to read file');
       } finally {
         setLoading(false);
       }

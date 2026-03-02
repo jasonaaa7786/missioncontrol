@@ -204,8 +204,8 @@ export const files = {
       params: { path },
     }),
   
-  open: (path: string) =>
-    fetchAPI<{ success: boolean }>('/api/files/open', {
+  read: (path: string) =>
+    fetchAPI<{ content: string }>('/api/files/read', {
       method: 'POST',
       body: JSON.stringify({ path }),
     }),

@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { readdir, stat } from 'fs/promises';
+import { readdir, stat, readFile } from 'fs/promises';
 import { join } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -46,8 +46,8 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // Open file/folder in OS file manager
-  fastify.post('/open', async (request, reply) => {
+  // Read file content
+  fastify.post('/read', async (request, reply) => {
     const { path } = request.body as { path: string };
 
     if (!path) {
@@ -62,25 +62,11 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     try {
-      const platform = process.platform;
-      let command: string;
-
-      if (platform === 'darwin') {
-        // macOS: open in Finder
-        command = `open "${path}"`;
-      } else if (platform === 'linux') {
-        // Linux: try xdg-open
-        command = `xdg-open "${path}"`;
-      } else {
-        reply.code(400).send({ error: 'Unsupported platform' });
-        return;
-      }
-
-      await execAsync(command);
-      return { success: true };
+      const content = await readFile(path, 'utf-8');
+      return { content };
     } catch (error) {
-      fastify.log.error(error, 'Failed to open file');
-      reply.code(500).send({ error: 'Failed to open file' });
+      fastify.log.error(error, 'Failed to read file');
+      reply.code(500).send({ error: 'Failed to read file' });
     }
   });
 
