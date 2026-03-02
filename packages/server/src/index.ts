@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { PrismaClient } from '@prisma/client';
+import { authMiddleware, requireAdminMiddleware } from './middleware/auth.js';
+import authRoutes from './routes/auth.js';
 import projectRoutes from './routes/projects.js';
 import taskRoutes from './routes/tasks.js';
 import agentRoutes from './routes/agents.js';
@@ -33,6 +35,10 @@ await fastify.register(websocket);
 // Attach Prisma to request context
 fastify.decorate('prisma', prisma);
 
+// Attach auth middleware
+fastify.decorate('authenticate', authMiddleware);
+fastify.decorate('requireAdmin', requireAdminMiddleware);
+
 declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient;
@@ -45,6 +51,7 @@ fastify.get('/health', async () => {
 });
 
 // Register routes
+await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(projectRoutes, { prefix: '/api/projects' });
 await fastify.register(taskRoutes, { prefix: '/api/tasks' });
 await fastify.register(agentRoutes, { prefix: '/api/agents' });
@@ -73,7 +80,7 @@ fastify.get('/ws', { websocket: true }, (socket, req) => {
 
 // Start server
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0'; // LAN accessible by default
 
 try {
   await fastify.listen({ port: PORT, host: HOST });
