@@ -1,6 +1,7 @@
 // API client with authentication
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3001';
+// Use relative URLs (proxied by Vite in dev, or same origin in production)
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;
