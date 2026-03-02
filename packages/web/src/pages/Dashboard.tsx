@@ -1,4 +1,42 @@
+import { useState, useEffect } from 'react';
+import { projects, agents, schedules } from '../lib/api';
+
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    projects: 0,
+    tasks: 0,
+    agents: 0,
+    schedules: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [projectsData, agentsData, schedulesData] = await Promise.all([
+          projects.list(),
+          agents.list(),
+          schedules.list(),
+        ]);
+
+        const totalTasks = projectsData.reduce((sum: number, p: any) => sum + (p._count?.tasks || 0), 0);
+
+        setStats({
+          projects: projectsData.filter((p: any) => p.status === 'active').length,
+          tasks: totalTasks,
+          agents: agentsData.filter((a: any) => a.isActive).length,
+          schedules: schedulesData.filter((s: any) => s.enabled).length,
+        });
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -7,10 +45,30 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Active Projects" value="0" icon="📁" color="blue" />
-        <StatCard title="In Progress Tasks" value="0" icon="⚡" color="yellow" />
-        <StatCard title="Active Agents" value="0" icon="🤖" color="green" />
-        <StatCard title="Scheduled Jobs" value="0" icon="⏰" color="purple" />
+        <StatCard 
+          title="Active Projects" 
+          value={loading ? '-' : stats.projects.toString()} 
+          icon="📁" 
+          color="blue" 
+        />
+        <StatCard 
+          title="In Progress Tasks" 
+          value={loading ? '-' : stats.tasks.toString()} 
+          icon="⚡" 
+          color="yellow" 
+        />
+        <StatCard 
+          title="Active Agents" 
+          value={loading ? '-' : stats.agents.toString()} 
+          icon="🤖" 
+          color="green" 
+        />
+        <StatCard 
+          title="Scheduled Jobs" 
+          value={loading ? '-' : stats.schedules.toString()} 
+          icon="⏰" 
+          color="purple" 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
