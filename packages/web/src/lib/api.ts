@@ -18,7 +18,13 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   const { params, ...fetchOptions } = options;
   
   // Build URL with query params
-  const url = new URL(endpoint, API_BASE);
+  let url: URL;
+  if (API_BASE) {
+    url = new URL(endpoint, API_BASE);
+  } else {
+    // For relative URLs (proxied through Vite), use current origin as base
+    url = new URL(endpoint, window.location.origin);
+  }
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
