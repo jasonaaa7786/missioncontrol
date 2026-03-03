@@ -110,6 +110,120 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
 
     return updated;
   });
+
+  // ========== SUBAGENT ROUTES ==========
+
+  // Create a new subagent
+  fastify.post('/subagents', async (request, reply) => {
+    const { name, description, skills, soulContent, projectIds } = request.body as {
+      name: string;
+      description?: string;
+      skills?: string[];
+      soulContent?: string;
+      projectIds?: string[];
+    };
+
+    if (!name) {
+      reply.code(400).send({ error: 'Name is required' });
+      return;
+    }
+
+    // Generate ID from name
+    const id = name.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+
+    // Check if ID already exists
+    const existing = await fastify.prisma.agent.findUnique({
+      where: { id },
+    });
+
+    if (existing) {
+      reply.code(400).send({ error: 'Agent with this name already exists' });
+      return;
+    }
+
+    const subagent = await fastify.prisma.agent.create({
+      data: {
+        id,
+        name,
+        workspace: '~/.openclaw-livescape/workspace',
+        isSubagent: true,
+        description: description || null,
+        skills: JSON.stringify(skills || []),
+        soulContent: soulContent || null,
+        parentAgentId: 'ls-commander',
+        projectIds: JSON.stringify(projectIds || []),
+        isActive: true,
+      },
+    });
+
+    return subagent;
+  });
+
+  // List subagents
+  fastify.get('/subagents', async (request, reply) => {
+    const subagents = await fastify.prisma.agent.findMany({
+      where: { isSubagent: true },
+      orderBy: { name: 'asc' },
+    });
+    return subagents;
+  });
+
+  // Update subagent
+  fastify.patch('/subagents/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { name, description, skills, soulContent, projectIds } = request.body as {
+      name?: string;
+      description?: string;
+      skills?: string[];
+      soulContent?: string;
+      projectIds?: string[];
+    };
+
+    const agent = await fastify.prisma.agent.findUnique({
+      where: { id },
+    });
+
+    if (!agent || !agent.isSubagent) {
+      reply.code(404).send({ error: 'Subagent not found' });
+      return;
+    }
+
+    const updated = await fastify.prisma.agent.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(description !== undefined && { description }),
+        ...(skills && { skills: JSON.stringify(skills) }),
+        ...(soulContent !== undefined && { soulContent }),
+        ...(projectIds && { projectIds: JSON.stringify(projectIds) }),
+      },
+    });
+
+    return updated;
+  });
+
+  // Delete subagent
+  fastify.delete('/subagents/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const agent = await fastify.prisma.agent.findUnique({
+      where: { id },
+    });
+
+    if (!agent || !agent.isSubagent) {
+      reply.code(404).send({ error: 'Subagent not found' });
+      return;
+    }
+
+    await fastify.prisma.agent.delete({
+      where: { id },
+    });
+
+    return { success: true };
+  });
 };
 
 export default agentRoutes;

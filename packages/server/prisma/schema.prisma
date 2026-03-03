@@ -66,16 +66,26 @@ model Task {
 }
 
 model Agent {
-  id        String   @id
-  name      String
-  workspace String
-  agentDir  String?
-  model     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id
+  name          String
+  workspace     String
+  agentDir      String?
+  model         String?
+  isActive      Boolean  @default(true)
+  
+  // Subagent fields
+  isSubagent    Boolean  @default(false)
+  description   String?
+  skills        String   @default("[]") // JSON array of skill tags
+  soulContent   String?  // SOUL.md content
+  parentAgentId String?  // Parent agent (usually ls-commander)
+  projectIds    String   @default("[]") // JSON array of assigned project IDs
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([isActive])
+  @@index([isSubagent])
 }
 
 model Schedule {

@@ -158,6 +158,40 @@ export const agents = {
     fetchAPI<any>(`/api/agents/${id}/toggle`, {
       method: 'PATCH',
     }),
+
+  // Subagent management
+  subagents: {
+    list: () => fetchAPI<any[]>('/api/agents/subagents'),
+    
+    create: (data: {
+      name: string;
+      description?: string;
+      skills?: string[];
+      soulContent?: string;
+      projectIds?: string[];
+    }) =>
+      fetchAPI<any>('/api/agents/subagents', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    update: (id: string, data: {
+      name?: string;
+      description?: string;
+      skills?: string[];
+      soulContent?: string;
+      projectIds?: string[];
+    }) =>
+      fetchAPI<any>(`/api/agents/subagents/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (id: string) =>
+      fetchAPI<{ success: boolean }>(`/api/agents/subagents/${id}`, {
+        method: 'DELETE',
+      }),
+  },
 };
 
 // Schedules API

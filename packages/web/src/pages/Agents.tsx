@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAgents } from '../hooks/useAgents';
 import { useAuth } from '../contexts/AuthContext';
+import DeployAgentModal from '../components/DeployAgentModal';
+import * as api from '../lib/api';
 
 export default function Agents() {
   const { agents: allAgents, loading, error, syncAgents, toggleAgent } = useAgents();
   const { isAdmin } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [subagents, setSubagents] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
 
   // Filter: Only show HEYMACHA (ls-commander) and Livescape subagents
   const livescapeAgentIds = [
@@ -21,7 +26,30 @@ export default function Agents() {
     'livescape-brain',
   ];
   
-  const agents = allAgents.filter(agent => livescapeAgentIds.includes(agent.id));
+  const openClawAgents = allAgents.filter(agent => livescapeAgentIds.includes(agent.id));
+
+  useEffect(() => {
+    loadSubagents();
+    loadProjects();
+  }, []);
+
+  const loadSubagents = async () => {
+    try {
+      const data = await api.agents.subagents.list();
+      setSubagents(data);
+    } catch (err) {
+      console.error('Failed to load subagents:', err);
+    }
+  };
+
+  const loadProjects = async () => {
+    try {
+      const data = await api.projects.list();
+      setProjects(data);
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+    }
+  };
 
   const handleSync = async () => {
     setSyncing(true);
@@ -45,21 +73,76 @@ export default function Agents() {
     }
   };
 
+  const handleDeleteSubagent = async (id: string, name: string) => {
+    if (!confirm(`Delete subagent "${name}"? This cannot be undone.`)) return;
+    
+    try {
+      await api.agents.subagents.delete(id);
+      await loadSubagents();
+      setSyncResult(`Deleted subagent "${name}"`);
+      setTimeout(() => setSyncResult(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete subagent');
+    }
+  };
+
+  const getProjectNames = (projectIds: string) => {
+    try {
+      const ids = JSON.parse(projectIds);
+      return ids.map((id: string) => {
+        const project = projects.find(p => p.id === id);
+        return project?.name || id;
+      }).join(', ') || 'No projects assigned';
+    } catch {
+      return 'No projects assigned';
+    }
+  };
+
+  const getSkills = (skillsJson: string) => {
+    try {
+      const skills = JSON.parse(skillsJson);
+      return skills.length > 0 ? skills : [];
+    } catch {
+      return [];
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Agents</h1>
-          <p className="text-gray-400 mt-2">Manage OpenClaw agents</p>
+          <p className="text-gray-400 mt-2">Manage HEYMACHA, Livescape agents, and custom subagents</p>
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="px-4 py-2 bg-mission-600 hover:bg-mission-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-        >
-          {syncing ? 'Syncing...' : 'Sync from OpenClaw'}
-        </button>
+        <div className="flex gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => setShowDeployModal(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+            >
+              + Deploy New Agent
+            </button>
+          )}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="px-4 py-2 bg-mission-600 hover:bg-mission-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+          >
+            {syncing ? 'Syncing...' : 'Sync from OpenClaw'}
+          </button>
+        </div>
       </div>
+
+      {showDeployModal && (
+        <DeployAgentModal
+          onClose={() => setShowDeployModal(false)}
+          onSuccess={() => {
+            loadSubagents();
+            setSyncResult('Subagent deployed successfully!');
+            setTimeout(() => setSyncResult(null), 5000);
+          }}
+        />
+      )}
 
       {syncResult && (
         <div className={`mb-6 px-4 py-3 rounded-lg ${
@@ -84,63 +167,139 @@ export default function Agents() {
         </div>
       )}
 
-      {!loading && !error && agents.length === 0 && (
+      {!loading && !error && openClawAgents.length === 0 && subagents.length === 0 && (
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-8 text-center">
-          <p className="text-gray-400 mb-4">No agents synced yet. Click "Sync from OpenClaw" to import agents.</p>
+          <p className="text-gray-400 mb-4">No agents yet. Sync from OpenClaw or deploy a new subagent.</p>
         </div>
       )}
 
-      {!loading && !error && agents.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent) => (
-            <div
-              key={agent.id}
-              className="bg-gray-800 rounded-lg border border-gray-700 p-6"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white">{agent.name}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{agent.id}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-500'}`} />
-                  <span className="text-xs text-gray-400">{agent.isActive ? 'Active' : 'Inactive'}</span>
-                </div>
-              </div>
+      {!loading && !error && (openClawAgents.length > 0 || subagents.length > 0) && (
+        <div className="space-y-8">
+          {/* OpenClaw Agents */}
+          {openClawAgents.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">HEYMACHA & Core Agents</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {openClawAgents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="bg-gray-800 rounded-lg border border-gray-700 p-6"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold text-white">{agent.name}</h3>
+                        <p className="text-xs text-gray-500 mt-1">{agent.id}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-500'}`} />
+                        <span className="text-xs text-gray-400">{agent.isActive ? 'Active' : 'Paused'}</span>
+                      </div>
+                    </div>
 
-              <div className="space-y-2 text-sm mb-4">
-                <div className="flex items-start gap-2 text-gray-400">
-                  <span className="flex-shrink-0">📁</span>
-                  <span className="truncate">{agent.workspace}</span>
-                </div>
-                {agent.model && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <span>🧠</span>
-                    <span className="truncate">{agent.model}</span>
-                  </div>
-                )}
-                {agent.agentDir && (
-                  <div className="flex items-start gap-2 text-gray-400">
-                    <span className="flex-shrink-0">🗂️</span>
-                    <span className="truncate text-xs">{agent.agentDir}</span>
-                  </div>
-                )}
-              </div>
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex items-start gap-2 text-gray-400">
+                        <span className="flex-shrink-0">📁</span>
+                        <span className="truncate">{agent.workspace}</span>
+                      </div>
+                      {agent.model && (
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <span>🧠</span>
+                          <span className="truncate">{agent.model}</span>
+                        </div>
+                      )}
+                    </div>
 
-              {isAdmin && (
-                <button
-                  onClick={() => handleToggle(agent.id)}
-                  className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                    agent.isActive
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                      : 'bg-mission-600 hover:bg-mission-700 text-white'
-                  }`}
-                >
-                  {agent.isActive ? 'Deactivate' : 'Activate'}
-                </button>
-              )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleToggle(agent.id)}
+                        className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
+                          agent.isActive
+                            ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                            : 'bg-mission-600 hover:bg-mission-700 text-white'
+                        }`}
+                      >
+                        {agent.isActive ? 'Pause' : 'Activate'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Custom Subagents */}
+          {subagents.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Custom Subagents ({subagents.length})</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {subagents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="bg-gradient-to-br from-gray-800 to-gray-850 rounded-lg border border-green-700/50 p-6"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🤖</span>
+                          <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{agent.id}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-500'}`} />
+                        <span className="text-xs text-gray-400">{agent.isActive ? 'Active' : 'Paused'}</span>
+                      </div>
+                    </div>
+
+                    {agent.description && (
+                      <p className="text-sm text-gray-300 mb-3">{agent.description}</p>
+                    )}
+
+                    <div className="space-y-2 text-sm mb-4">
+                      {getSkills(agent.skills).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {getSkills(agent.skills).map((skill: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-blue-600/20 text-blue-300 rounded text-xs"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="text-gray-400 text-xs">
+                        <span className="font-medium">Projects:</span>{' '}
+                        {getProjectNames(agent.projectIds)}
+                      </div>
+                    </div>
+
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleToggle(agent.id)}
+                          className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                            agent.isActive
+                              ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                          }`}
+                        >
+                          {agent.isActive ? 'Pause' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSubagent(agent.id, agent.name)}
+                          className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg font-medium text-sm transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
