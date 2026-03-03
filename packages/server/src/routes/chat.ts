@@ -7,7 +7,7 @@ const execAsync = promisify(exec);
 
 const chatRoutes: FastifyPluginAsync = async (fastify) => {
   // Get or create chat session
-  fastify.post('/session', async (request, reply) => {
+  fastify.post('/session', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { projectId } = request.body as { projectId?: string };
 
     const session = await fastify.prisma.chatSession.create({
@@ -20,7 +20,7 @@ const chatRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Get chat history
-  fastify.get('/session/:sessionId', async (request, reply) => {
+  fastify.get('/session/:sessionId', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { sessionId } = request.params as { sessionId: string };
 
     const messages = await fastify.prisma.chatMessage.findMany({
@@ -32,7 +32,7 @@ const chatRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Send message
-  fastify.post('/message', async (request, reply) => {
+  fastify.post('/message', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const body = request.body as ChatRequest;
 
     // Create session if not provided
@@ -92,7 +92,7 @@ const chatRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Delete chat session
-  fastify.delete('/session/:sessionId', async (request, reply) => {
+  fastify.delete('/session/:sessionId', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { sessionId } = request.params as { sessionId: string };
     
     await fastify.prisma.chatSession.delete({

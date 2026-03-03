@@ -1,14 +1,42 @@
 import { FastifyPluginAsync } from 'fastify';
 import { readdir, stat, readFile } from 'fs/promises';
-import { join } from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { join, resolve } from 'path';
 
 const fileRoutes: FastifyPluginAsync = async (fastify) => {
-  // List files in project directory
-  fastify.get('/browse', async (request, reply) => {
+  // Whitelist of allowed base directories
+  const ALLOWED_DIRECTORIES = [
+    '/root/livescape-marketing/shared-data',
+    '/root/livescape-marketing/ls-commander',
+    '/root/livescape-marketing/livescape-scout',
+    '/root/livescape-marketing/livescape-pulse',
+    '/root/livescape-marketing/livescape-radar',
+    '/root/livescape-marketing/livescape-meta',
+    '/root/livescape-marketing/livescape-audit',
+    '/root/livescape-marketing/livescape-trends',
+    '/root/livescape-marketing/livescape-brand',
+    '/root/livescape-marketing/livescape-brain',
+    '/root/livescape-marketing/livescape-forge',
+  ];
+
+  /**
+   * Validate that a path is within allowed directories
+   */
+  function isPathAllowed(requestedPath: string): boolean {
+    try {
+      // Resolve to absolute path (prevents .. attacks)
+      const absolutePath = resolve(requestedPath);
+      
+      // Check if path starts with any allowed directory
+      return ALLOWED_DIRECTORIES.some(allowedDir => 
+        absolutePath.startsWith(resolve(allowedDir))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // List files in project directory (requires authentication)
+  fastify.get('/browse', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { path } = request.query as { path: string };
 
     if (!path) {
@@ -16,9 +44,10 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
-    // Basic path validation (prevent directory traversal)
-    if (path.includes('..') || !path.startsWith('/')) {
-      reply.code(400).send({ error: 'Invalid path' });
+    // Validate path is in allowed directories
+    if (!isPathAllowed(path)) {
+      fastify.log.warn({ path }, 'Attempted access to restricted path');
+      reply.code(403).send({ error: 'Access to this path is not allowed' });
       return;
     }
 
@@ -46,8 +75,8 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // Read file content
-  fastify.post('/read', async (request, reply) => {
+  // Read file content (requires authentication)
+  fastify.post('/read', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { path } = request.body as { path: string };
 
     if (!path) {
@@ -55,9 +84,10 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
-    // Basic path validation
-    if (path.includes('..') || !path.startsWith('/')) {
-      reply.code(400).send({ error: 'Invalid path' });
+    // Validate path is in allowed directories
+    if (!isPathAllowed(path)) {
+      fastify.log.warn({ path, user: request.user.username }, 'Attempted unauthorized file read');
+      reply.code(403).send({ error: 'Access to this file is not allowed' });
       return;
     }
 
@@ -70,8 +100,8 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // Download file
-  fastify.get('/download', async (request, reply) => {
+  // Download file (requires authentication)
+  fastify.get('/download', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { path } = request.query as { path: string };
 
     if (!path) {
@@ -79,9 +109,10 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
-    // Basic path validation
-    if (path.includes('..') || !path.startsWith('/')) {
-      reply.code(400).send({ error: 'Invalid path' });
+    // Validate path is in allowed directories
+    if (!isPathAllowed(path)) {
+      fastify.log.warn({ path, user: request.user.username }, 'Attempted unauthorized file download');
+      reply.code(403).send({ error: 'Access to this file is not allowed' });
       return;
     }
 
@@ -126,8 +157,8 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // Index project files
-  fastify.post('/index/:projectId', async (request, reply) => {
+  // Index project files (admin only)
+  fastify.post('/index/:projectId', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
 
     const project = await fastify.prisma.project.findUnique({

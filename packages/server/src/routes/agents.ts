@@ -4,8 +4,8 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 const agentRoutes: FastifyPluginAsync = async (fastify) => {
-  // Sync agents from OpenClaw config
-  fastify.post('/sync', async (request, reply) => {
+  // Sync agents from OpenClaw config (admin only)
+  fastify.post('/sync', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     try {
       // Read from Livescape profile (where HEYMACHA and subagents are configured)
       const configPath = join(homedir(), '.openclaw-livescape', 'openclaw.json');
@@ -68,16 +68,16 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // List agents
-  fastify.get('/', async (request, reply) => {
+  // List agents (requires authentication)
+  fastify.get('/', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const agents = await fastify.prisma.agent.findMany({
       orderBy: { name: 'asc' },
     });
     return agents;
   });
 
-  // Get agent by ID
-  fastify.get('/:id', async (request, reply) => {
+  // Get agent by ID (requires authentication)
+  fastify.get('/:id', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     
     const agent = await fastify.prisma.agent.findUnique({
@@ -92,8 +92,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     return agent;
   });
 
-  // Toggle agent active status
-  fastify.patch('/:id/toggle', async (request, reply) => {
+  // Toggle agent active status (admin only)
+  fastify.patch('/:id/toggle', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     
     const agent = await fastify.prisma.agent.findUnique({
@@ -115,8 +115,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ========== SUBAGENT ROUTES ==========
 
-  // Create a new subagent
-  fastify.post('/subagents', async (request, reply) => {
+  // Create a new subagent (admin only)
+  fastify.post('/subagents', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { name, description, skills, soulContent, projectIds } = request.body as {
       name: string;
       description?: string;
@@ -164,8 +164,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     return subagent;
   });
 
-  // List subagents
-  fastify.get('/subagents', async (request, reply) => {
+  // List subagents (requires authentication)
+  fastify.get('/subagents', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const subagents = await fastify.prisma.agent.findMany({
       where: { isSubagent: true },
       orderBy: { name: 'asc' },
@@ -173,8 +173,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     return subagents;
   });
 
-  // Update subagent
-  fastify.patch('/subagents/:id', async (request, reply) => {
+  // Update subagent (admin only)
+  fastify.patch('/subagents/:id', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { name, description, skills, soulContent, projectIds } = request.body as {
       name?: string;
@@ -207,8 +207,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     return updated;
   });
 
-  // Delete subagent
-  fastify.delete('/subagents/:id', async (request, reply) => {
+  // Delete subagent (admin only)
+  fastify.delete('/subagents/:id', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const agent = await fastify.prisma.agent.findUnique({

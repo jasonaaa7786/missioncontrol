@@ -28,7 +28,7 @@ const fastify = Fastify({
 
 // Plugins
 await fastify.register(cors, {
-  origin: true, // Allow all origins in dev (restrict in production)
+  origin: ['http://140.82.57.157:5173', 'http://localhost:5173'], // Only allow Mission Control frontend
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,

@@ -2,8 +2,8 @@ import { FastifyPluginAsync } from 'fastify';
 import type { CreateProjectRequest, UpdateProjectRequest } from '@mc/shared';
 
 const projectRoutes: FastifyPluginAsync = async (fastify) => {
-  // List all projects
-  fastify.get('/', async (request, reply) => {
+  // List all projects (requires authentication)
+  fastify.get('/', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const projects = await fastify.prisma.project.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -15,8 +15,8 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     return projects;
   });
 
-  // Get project by ID
-  fastify.get('/:id', async (request, reply) => {
+  // Get project by ID (requires authentication)
+  fastify.get('/:id', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const project = await fastify.prisma.project.findUnique({
       where: { id },
@@ -39,8 +39,8 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     return project;
   });
 
-  // Create project
-  fastify.post('/', async (request, reply) => {
+  // Create project (admin only)
+  fastify.post('/', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const body = request.body as CreateProjectRequest;
     
     const project = await fastify.prisma.project.create({
@@ -59,8 +59,8 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     reply.code(201).send(project);
   });
 
-  // Update project
-  fastify.patch('/:id', async (request, reply) => {
+  // Update project (admin only)
+  fastify.patch('/:id', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as UpdateProjectRequest;
 
@@ -82,8 +82,8 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     return project;
   });
 
-  // Delete project
-  fastify.delete('/:id', async (request, reply) => {
+  // Delete project (admin only)
+  fastify.delete('/:id', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     
     await fastify.prisma.project.delete({
@@ -93,8 +93,8 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     reply.code(204).send();
   });
 
-  // Get project stats
-  fastify.get('/:id/stats', async (request, reply) => {
+  // Get project stats (requires authentication)
+  fastify.get('/:id/stats', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const stats = await fastify.prisma.task.groupBy({

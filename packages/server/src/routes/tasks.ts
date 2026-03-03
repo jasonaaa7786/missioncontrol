@@ -3,7 +3,7 @@ import type { CreateTaskRequest, UpdateTaskRequest } from '@mc/shared';
 
 const taskRoutes: FastifyPluginAsync = async (fastify) => {
   // Get tasks by project
-  fastify.get('/project/:projectId', async (request, reply) => {
+  fastify.get('/project/:projectId', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     
     const tasks = await fastify.prisma.task.findMany({
@@ -32,7 +32,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Create task
-  fastify.post('/project/:projectId', async (request, reply) => {
+  fastify.post('/project/:projectId', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     const body = request.body as CreateTaskRequest;
 
@@ -92,7 +92,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Reorder tasks
-  fastify.post('/reorder', async (request, reply) => {
+  fastify.post('/reorder', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { taskId, newStatus, newPosition } = request.body as {
       taskId: string;
       newStatus: string;
