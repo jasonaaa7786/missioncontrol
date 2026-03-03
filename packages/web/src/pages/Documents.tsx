@@ -12,12 +12,16 @@ interface FileItem {
   modifiedAt?: string;
 }
 
+interface FileItemWithProject extends FileItem {
+  projectName?: string;
+}
+
 export default function Documents() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [filteredFiles, setFilteredFiles] = useState<FileItem[]>([]);
-  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [files, setFiles] = useState<FileItemWithProject[]>([]);
+  const [filteredFiles, setFilteredFiles] = useState<FileItemWithProject[]>([]);
+  const [selectedFile, setSelectedFile] = useState<FileItemWithProject | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [currentPath, setCurrentPath] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -29,7 +33,9 @@ export default function Documents() {
   }, []);
 
   useEffect(() => {
-    if (selectedProject) {
+    if (selectedProject === 'all-documents') {
+      browseAllProjects();
+    } else if (selectedProject) {
       const project = projects.find(p => p.id === selectedProject);
       if (project?.outputDir) {
         browseDirectory(project.outputDir);
@@ -53,11 +59,44 @@ export default function Documents() {
     try {
       const data = await api.projects.list();
       setProjects(data);
-      if (data.length > 0) {
-        setSelectedProject(data[0].id);
-      }
+      // Default to "All Documents" view
+      setSelectedProject('all-documents');
     } catch (err: any) {
       setError(err.message || 'Failed to load projects');
+    }
+  };
+
+  const browseAllProjects = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const allFiles: FileItemWithProject[] = [];
+
+      // Get all projects with outputDir
+      const projectsWithOutput = projects.filter(p => p.outputDir);
+
+      for (const project of projectsWithOutput) {
+        try {
+          const projectFiles = await api.files.browse(project.outputDir!);
+          // Add project name to each file
+          const filesWithProject = projectFiles.map(f => ({
+            ...f,
+            projectName: project.name,
+          }));
+          allFiles.push(...filesWithProject);
+        } catch (err) {
+          console.error(`Failed to browse ${project.name}:`, err);
+        }
+      }
+
+      setFiles(allFiles);
+      setCurrentPath('All Documents');
+      setSearchQuery(''); // Reset search when changing to all
+    } catch (err: any) {
+      setError(err.message || 'Failed to browse all documents');
+      setFiles([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,11 +116,14 @@ export default function Documents() {
     }
   };
 
-  const handleFileClick = async (file: FileItem) => {
+  const handleFileClick = async (file: FileItemWithProject) => {
     if (file.type === 'directory') {
-      browseDirectory(file.path);
-      setSelectedFile(null);
-      setFileContent('');
+      // In "All Documents" view, don't navigate into directories
+      if (selectedProject !== 'all-documents') {
+        browseDirectory(file.path);
+        setSelectedFile(null);
+        setFileContent('');
+      }
     } else if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
       try {
         setLoading(true);
@@ -107,6 +149,10 @@ export default function Documents() {
   };
 
   const handleGoUp = () => {
+    if (selectedProject === 'all-documents') {
+      // Can't go up in "All Documents" view
+      return;
+    }
     const parentPath = currentPath.split('/').slice(0, -1).join('/') || '/';
     browseDirectory(parentPath);
     setSelectedFile(null);
@@ -156,11 +202,13 @@ export default function Documents() {
         <select
           value={selectedProject}
           onChange={(e) => setSelectedProject(e.target.value)}
-          className="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+          className="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white font-medium"
         >
+          <option value="all-documents">📚 All Documents</option>
+          <option disabled>──────────</option>
           {projects.map(project => (
             <option key={project.id} value={project.id}>
-              {project.name} {project.outputDir ? `(${project.outputDir})` : '(no output dir)'}
+              {project.name} {project.outputDir ? '' : '(no output dir)'}
             </option>
           ))}
         </select>
@@ -171,7 +219,7 @@ export default function Documents() {
         <div className="col-span-1 bg-gray-800 rounded-lg border border-gray-700 p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Files</h2>
-            {currentPath && (
+            {currentPath && selectedProject !== 'all-documents' && (
               <button
                 onClick={handleGoUp}
                 className="text-blue-400 hover:text-blue-300 text-sm"
@@ -182,7 +230,7 @@ export default function Documents() {
           </div>
           
           <div className="text-xs text-gray-500 mb-3 truncate" title={currentPath}>
-            {currentPath || '/'}
+            {selectedProject === 'all-documents' ? '📚 All Documents' : (currentPath || '/')}
           </div>
 
           {/* Search */}
@@ -215,9 +263,16 @@ export default function Documents() {
                   <span className="text-gray-400 flex-shrink-0">
                     {file.type === 'directory' ? '📁' : '📄'}
                   </span>
-                  <span className="text-white text-sm truncate flex-1">
-                    {file.name}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-sm truncate">
+                      {file.name}
+                    </div>
+                    {selectedProject === 'all-documents' && file.projectName && (
+                      <div className="text-xs text-gray-500 truncate">
+                        {file.projectName}
+                      </div>
+                    )}
+                  </div>
                   {file.type === 'file' && (
                     <span className="text-gray-500 text-xs flex-shrink-0">
                       {formatFileSize(file.size)}
@@ -253,6 +308,9 @@ export default function Documents() {
                   <h2 className="text-lg font-semibold text-white">{selectedFile.name}</h2>
                   <div className="text-xs text-gray-500 mt-1">
                     {formatFileSize(selectedFile.size)} • {formatDate(selectedFile.modifiedAt)}
+                    {selectedFile.projectName && (
+                      <> • <span className="text-blue-400">{selectedFile.projectName}</span></>
+                    )}
                   </div>
                 </div>
                 <button
