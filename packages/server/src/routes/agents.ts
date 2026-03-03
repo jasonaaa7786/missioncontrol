@@ -7,7 +7,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
   // Sync agents from OpenClaw config
   fastify.post('/sync', async (request, reply) => {
     try {
-      const configPath = join(homedir(), '.openclaw', 'openclaw.json');
+      // Read from Livescape profile (where HEYMACHA and subagents are configured)
+      const configPath = join(homedir(), '.openclaw-livescape', 'openclaw.json');
       const configData = await readFile(configPath, 'utf-8');
       const config = JSON.parse(configData);
 
@@ -22,6 +23,7 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
         'livescape-trends',
         'livescape-brand',
         'livescape-brain',
+        'livescape-forge',
       ];
 
       const allAgents = config.agents?.list || [];

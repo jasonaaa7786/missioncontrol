@@ -24,6 +24,7 @@ export default function Agents() {
     'livescape-trends',
     'livescape-brand',
     'livescape-brain',
+    'livescape-forge',
   ];
   
   const openClawAgents = allAgents.filter(agent => livescapeAgentIds.includes(agent.id));
