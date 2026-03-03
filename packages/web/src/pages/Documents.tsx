@@ -95,8 +95,15 @@ export default function Documents() {
         setLoading(false);
       }
     } else {
-      alert('Only .md and .txt files can be previewed');
+      // For non-previewable files, just select them (download available)
+      setSelectedFile(file);
+      setFileContent('');
     }
+  };
+
+  const handleDirectDownload = (file: FileItem, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent file click
+    api.files.download(file.path, file.name);
   };
 
   const handleGoUp = () => {
@@ -195,25 +202,38 @@ export default function Documents() {
 
           <div className="space-y-1 max-h-[600px] overflow-y-auto">
             {filteredFiles.map((file, idx) => (
-              <button
+              <div
                 key={idx}
-                onClick={() => handleFileClick(file)}
-                className={`w-full text-left px-3 py-2 rounded hover:bg-gray-700 flex items-center gap-2 ${
+                className={`group flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-700 ${
                   selectedFile?.path === file.path ? 'bg-gray-700' : ''
                 }`}
               >
-                <span className="text-gray-400">
-                  {file.type === 'directory' ? '📁' : '📄'}
-                </span>
-                <span className="text-white text-sm truncate flex-1">
-                  {file.name}
-                </span>
-                {file.type === 'file' && (
-                  <span className="text-gray-500 text-xs">
-                    {formatFileSize(file.size)}
+                <button
+                  onClick={() => handleFileClick(file)}
+                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                >
+                  <span className="text-gray-400 flex-shrink-0">
+                    {file.type === 'directory' ? '📁' : '📄'}
                   </span>
+                  <span className="text-white text-sm truncate flex-1">
+                    {file.name}
+                  </span>
+                  {file.type === 'file' && (
+                    <span className="text-gray-500 text-xs flex-shrink-0">
+                      {formatFileSize(file.size)}
+                    </span>
+                  )}
+                </button>
+                {file.type === 'file' && (
+                  <button
+                    onClick={(e) => handleDirectDownload(file, e)}
+                    className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Download file"
+                  >
+                    ⬇️
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
           </div>
 
@@ -245,7 +265,7 @@ export default function Documents() {
 
               {loading ? (
                 <p className="text-gray-400">Loading file...</p>
-              ) : (
+              ) : fileContent ? (
                 <div className="bg-gray-900 rounded p-4 overflow-auto max-h-[600px]">
                   {selectedFile.name.endsWith('.md') ? (
                     <div className="prose prose-invert max-w-none">
@@ -303,6 +323,22 @@ export default function Documents() {
                       {fileContent}
                     </pre>
                   )}
+                </div>
+              ) : (
+                <div className="bg-gray-900 rounded p-8 text-center">
+                  <div className="text-6xl mb-4">📄</div>
+                  <p className="text-gray-400 mb-4">
+                    Preview not available for this file type
+                  </p>
+                  <p className="text-gray-500 text-sm mb-6">
+                    {selectedFile.name.split('.').pop()?.toUpperCase()} file ({formatFileSize(selectedFile.size)})
+                  </p>
+                  <button
+                    onClick={() => api.files.download(selectedFile.path, selectedFile.name)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  >
+                    Download File
+                  </button>
                 </div>
               )}
             </>

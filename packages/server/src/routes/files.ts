@@ -70,6 +70,62 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  // Download file
+  fastify.get('/download', async (request, reply) => {
+    const { path } = request.query as { path: string };
+
+    if (!path) {
+      reply.code(400).send({ error: 'Path parameter required' });
+      return;
+    }
+
+    // Basic path validation
+    if (path.includes('..') || !path.startsWith('/')) {
+      reply.code(400).send({ error: 'Invalid path' });
+      return;
+    }
+
+    try {
+      const fileStats = await stat(path);
+      
+      if (!fileStats.isFile()) {
+        reply.code(400).send({ error: 'Path is not a file' });
+        return;
+      }
+
+      const fileName = path.split('/').pop() || 'download';
+      const ext = fileName.split('.').pop()?.toLowerCase() || '';
+      
+      // Set content type based on extension
+      const contentTypes: Record<string, string> = {
+        'md': 'text/markdown',
+        'txt': 'text/plain',
+        'pdf': 'application/pdf',
+        'csv': 'text/csv',
+        'json': 'application/json',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
+        'webp': 'image/webp',
+      };
+
+      const contentType = contentTypes[ext] || 'application/octet-stream';
+
+      const content = await readFile(path);
+      
+      reply
+        .header('Content-Type', contentType)
+        .header('Content-Disposition', `attachment; filename="${fileName}"`)
+        .header('Content-Length', fileStats.size)
+        .send(content);
+    } catch (error) {
+      fastify.log.error(error, 'Failed to download file');
+      reply.code(500).send({ error: 'Failed to download file' });
+    }
+  });
+
   // Index project files
   fastify.post('/index/:projectId', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };

@@ -210,6 +210,18 @@ export const files = {
       body: JSON.stringify({ path }),
     }),
   
+  download: (path: string, fileName: string) => {
+    // Direct browser download (not via fetchAPI)
+    const url = `${API_BASE}/api/files/download?path=${encodeURIComponent(path)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  },
+  
   index: (projectId: string) =>
     fetchAPI<{ success: boolean; message?: string }>(`/api/files/index/${projectId}`, {
       method: 'POST',

@@ -3,10 +3,25 @@ import { useAgents } from '../hooks/useAgents';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Agents() {
-  const { agents, loading, error, syncAgents, toggleAgent } = useAgents();
+  const { agents: allAgents, loading, error, syncAgents, toggleAgent } = useAgents();
   const { isAdmin } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+
+  // Filter: Only show HEYMACHA (ls-commander) and Livescape subagents
+  const livescapeAgentIds = [
+    'ls-commander',
+    'livescape-scout',
+    'livescape-pulse',
+    'livescape-radar',
+    'livescape-meta',
+    'livescape-audit',
+    'livescape-trends',
+    'livescape-brand',
+    'livescape-brain',
+  ];
+  
+  const agents = allAgents.filter(agent => livescapeAgentIds.includes(agent.id));
 
   const handleSync = async () => {
     setSyncing(true);
