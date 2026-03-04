@@ -32,6 +32,7 @@ model Project {
   defaultAgent String?
   gitRepo     String?
   cadence     String?
+  imageUrl    String?  // Project visual identifier
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -80,6 +81,7 @@ model Agent {
   soulContent   String?  // SOUL.md content
   parentAgentId String?  // Parent agent (usually ls-commander)
   projectIds    String   @default("[]") // JSON array of assigned project IDs
+  imageUrl      String?  // Agent visual identifier (avatar)
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

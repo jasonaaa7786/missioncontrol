@@ -2,6 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
+import multipart from '@fastify/multipart';
 import { PrismaClient } from '@prisma/client';
 import { authMiddleware, requireAdminMiddleware } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
@@ -11,6 +12,8 @@ import agentRoutes from './routes/agents.js';
 import scheduleRoutes from './routes/schedules.js';
 import chatRoutes from './routes/chat.js';
 import fileRoutes from './routes/files.js';
+import systemRoutes from './routes/system.js';
+import uploadsRoutes from './routes/uploads.js';
 
 const prisma = new PrismaClient();
 const fastify = Fastify({
@@ -35,6 +38,12 @@ await fastify.register(cors, {
 });
 
 await fastify.register(websocket);
+
+await fastify.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+});
 
 // Attach Prisma to request context
 fastify.decorate('prisma', prisma);
@@ -62,6 +71,8 @@ await fastify.register(agentRoutes, { prefix: '/api/agents' });
 await fastify.register(scheduleRoutes, { prefix: '/api/schedules' });
 await fastify.register(chatRoutes, { prefix: '/api/chat' });
 await fastify.register(fileRoutes, { prefix: '/api/files' });
+await fastify.register(systemRoutes, { prefix: '/api/system' });
+await fastify.register(uploadsRoutes, { prefix: '/api/uploads' });
 
 // WebSocket endpoint
 fastify.get('/ws', { websocket: true }, (socket, req) => {

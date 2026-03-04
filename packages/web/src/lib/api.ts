@@ -262,6 +262,61 @@ export const files = {
     }),
 };
 
+// System API
+export const system = {
+  getInfo: () => fetchAPI<any>('/api/system/info'),
+  
+  checkUpdates: () => fetchAPI<any>('/api/system/check-updates', {
+    method: 'POST',
+  }),
+  
+  verifySyncPassword: (password: string) => fetchAPI<{ valid: boolean }>('/api/system/verify-sync-password', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  }),
+};
+
+// Uploads API
+export const uploads = {
+  uploadProjectImage: async (file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE}/api/uploads/project-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to upload image');
+    }
+    
+    return response.json();
+  },
+  
+  uploadAgentImage: async (file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE}/api/uploads/agent-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to upload image');
+    }
+    
+    return response.json();
+  },
+};
+
 // Chat API
 export const chat = {
   createSession: (projectId?: string) =>
