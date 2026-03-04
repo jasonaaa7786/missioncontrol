@@ -22,6 +22,7 @@ export interface Project {
   defaultAgent: string | null;
   gitRepo: string | null;
   cadence: string | null;
+  imageUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,7 @@ export interface Agent {
   agentDir: string | null;
   model: string | null;
   isActive: boolean;
+  imageUrl: string | null;
 }
 
 export interface Schedule {
@@ -92,6 +94,7 @@ export interface CreateProjectRequest {
   defaultAgent?: string;
   gitRepo?: string;
   cadence?: string;
+  imageUrl?: string;
 }
 
 export interface UpdateProjectRequest {
@@ -104,6 +107,7 @@ export interface UpdateProjectRequest {
   defaultAgent?: string;
   gitRepo?: string;
   cadence?: string;
+  imageUrl?: string;
 }
 
 export interface CreateTaskRequest {

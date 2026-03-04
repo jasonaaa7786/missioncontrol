@@ -77,67 +77,84 @@ export default function Projects() {
             return (
               <div
                 key={project.id}
-                className="bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-mission-500 transition-colors"
+                className="bg-gray-800 rounded-lg border border-gray-700 hover:border-mission-500 transition-colors overflow-hidden"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <Link
-                      to={`/projects/${project.id}`}
-                      className="text-xl font-semibold text-white hover:text-mission-400 transition-colors"
-                    >
-                      {project.name}
-                    </Link>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`w-2 h-2 rounded-full ${getStatusColor(project.status)}`} />
-                      <span className="text-xs text-gray-400 capitalize">{project.status}</span>
-                    </div>
+                {/* Project Image */}
+                {project.imageUrl ? (
+                  <div className="h-32 overflow-hidden">
+                    <img
+                      src={`http://140.82.57.157:3001${project.imageUrl}`}
+                      alt={project.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleDelete(project.id)}
-                      disabled={deletingId === project.id}
-                      className="text-red-400 hover:text-red-300 disabled:opacity-50"
-                      title="Delete project"
-                    >
-                      {deletingId === project.id ? '...' : '🗑️'}
-                    </button>
-                  )}
-                </div>
-
-                {project.description && (
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                    {project.description}
-                  </p>
+                ) : (
+                  <div className="h-32 bg-gradient-to-br from-mission-900 to-gray-900 flex items-center justify-center">
+                    <span className="text-5xl opacity-50">📁</span>
+                  </div>
                 )}
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <span>📁</span>
-                    <span className="truncate">{project.workingDir}</span>
-                  </div>
-                  {project._count && (
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <span>📋</span>
-                      <span>{project._count.tasks} tasks</span>
-                    </div>
-                  )}
-                </div>
-
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {tags.map((tag: string) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-mission-600/20 text-mission-400 text-xs rounded"
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <Link
+                        to={`/projects/${project.id}`}
+                        className="text-xl font-semibold text-white hover:text-mission-400 transition-colors"
                       >
-                        {tag}
-                      </span>
-                    ))}
+                        {project.name}
+                      </Link>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`w-2 h-2 rounded-full ${getStatusColor(project.status)}`} />
+                        <span className="text-xs text-gray-400 capitalize">{project.status}</span>
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(project.id)}
+                        disabled={deletingId === project.id}
+                        className="text-red-400 hover:text-red-300 disabled:opacity-50"
+                        title="Delete project"
+                      >
+                        {deletingId === project.id ? '...' : '🗑️'}
+                      </button>
+                    )}
                   </div>
-                )}
 
-                <div className="mt-4 pt-4 border-t border-gray-700 text-xs text-gray-500">
-                  Created {new Date(project.createdAt).toLocaleDateString()}
+                  {project.description && (
+                    <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <span>📁</span>
+                      <span className="truncate">{project.workingDir}</span>
+                    </div>
+                    {project._count && (
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <span>📋</span>
+                        <span>{project._count.tasks} tasks</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {tags.map((tag: string) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-1 bg-mission-600/20 text-mission-400 text-xs rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 pt-4 border-t border-gray-700 text-xs text-gray-500">
+                    Created {new Date(project.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
             );

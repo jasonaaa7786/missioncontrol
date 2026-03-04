@@ -40,8 +40,35 @@ export default function DeployAgentModal({ onClose, onSuccess }: DeployAgentModa
     soulContent: SOUL_TEMPLATE,
     projectIds: [] as string[],
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
+      setError('');
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     loadProjects();
@@ -68,6 +95,19 @@ export default function DeployAgentModal({ onClose, onSuccess }: DeployAgentModa
     setError('');
 
     try {
+      // Upload image first if selected
+      let imageUrl: string | undefined = undefined;
+      if (imageFile) {
+        try {
+          const result = await api.uploads.uploadAgentImage(imageFile);
+          imageUrl = result.imageUrl;
+        } catch (err) {
+          setError('Failed to upload image. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const skills = formData.skills
         .split(',')
         .map(s => s.trim())
@@ -82,6 +122,7 @@ export default function DeployAgentModal({ onClose, onSuccess }: DeployAgentModa
         skills,
         soulContent,
         projectIds: formData.projectIds,
+        imageUrl,
       });
 
       onSuccess();
@@ -158,6 +199,51 @@ export default function DeployAgentModal({ onClose, onSuccess }: DeployAgentModa
                 placeholder="trance, lineup, artist-research"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 mb-2">Agent Avatar</label>
+              <div className="flex items-center gap-4">
+                {imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover rounded-full border-2 border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
+                      className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full text-white text-sm flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 bg-gray-700 border-2 border-gray-600 rounded-full flex items-center justify-center text-3xl">
+                    🤖
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                    <span className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors inline-block">
+                      {imageFile ? 'Change Avatar' : 'Add Avatar'}
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-2">
+                    JPG, PNG, GIF, or WEBP. Max 5MB. Square images work best.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 

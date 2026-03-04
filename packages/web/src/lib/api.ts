@@ -169,6 +169,7 @@ export const agents = {
       skills?: string[];
       soulContent?: string;
       projectIds?: string[];
+      imageUrl?: string;
     }) =>
       fetchAPI<any>('/api/agents/subagents', {
         method: 'POST',

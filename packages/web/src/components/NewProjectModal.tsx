@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react';
+import * as api from '../lib/api';
 
 interface NewProjectModalProps {
   isOpen: boolean;
@@ -13,8 +14,35 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }: NewProjec
   const [outputDir, setOutputDir] = useState('');
   const [defaultAgent, setDefaultAgent] = useState('');
   const [tags, setTags] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
+      setError('');
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -33,6 +61,19 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }: NewProjec
 
     setLoading(true);
     try {
+      // Upload image first if selected
+      let imageUrl: string | undefined = undefined;
+      if (imageFile) {
+        try {
+          const result = await api.uploads.uploadProjectImage(imageFile);
+          imageUrl = result.imageUrl;
+        } catch (err) {
+          setError('Failed to upload image. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
       await onSubmit({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -40,6 +81,7 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }: NewProjec
         outputDir: outputDir.trim() || undefined,
         defaultAgent: defaultAgent.trim() || undefined,
         tags: tags.trim() ? tags.split(',').map(t => t.trim()) : [],
+        imageUrl,
       });
       
       // Reset form
@@ -49,6 +91,8 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }: NewProjec
       setOutputDir('');
       setDefaultAgent('');
       setTags('');
+      setImageFile(null);
+      setImagePreview(null);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -148,6 +192,53 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }: NewProjec
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-mission-500"
                 placeholder="research, analysis, priority"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Project Image
+              </label>
+              <div className="flex items-center gap-4">
+                {imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-24 h-24 object-cover rounded border border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full text-white text-sm flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 bg-gray-700 border border-gray-600 rounded flex items-center justify-center text-gray-500">
+                    <span className="text-3xl">📁</span>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                    <span className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors inline-block">
+                      {imageFile ? 'Change Image' : 'Add Image'}
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-2">
+                    JPG, PNG, GIF, or WEBP. Max 5MB.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {error && (

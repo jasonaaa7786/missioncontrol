@@ -318,11 +318,21 @@ export default function Agents() {
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">🤖</span>
-                          <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
+                        <div className="flex items-center gap-3">
+                          {agent.imageUrl ? (
+                            <img
+                              src={`http://140.82.57.157:3001${agent.imageUrl}`}
+                              alt={agent.name}
+                              className="w-12 h-12 object-cover rounded-full border-2 border-green-500/50"
+                            />
+                          ) : (
+                            <span className="text-2xl">🤖</span>
+                          )}
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
+                            <p className="text-xs text-gray-500">{agent.id}</p>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{agent.id}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-500'}`} />
