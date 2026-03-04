@@ -10,6 +10,9 @@ export default function Agents() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [subagents, setSubagents] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
 
@@ -52,17 +55,40 @@ export default function Agents() {
     }
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
-    setSyncResult(null);
+  const handleSyncClick = () => {
+    setShowPasswordModal(true);
+    setPassword('');
+    setPasswordError('');
+  };
+
+  const handleSyncWithPassword = async () => {
+    if (!password.trim()) {
+      setPasswordError('Password required');
+      return;
+    }
+
     try {
-      const result = await syncAgents();
-      setSyncResult(`Synced ${result.synced} agent(s) from OpenClaw config`);
-      setTimeout(() => setSyncResult(null), 5000);
+      // Verify password first
+      const result = await api.system.verifySyncPassword(password);
+      
+      if (result.valid) {
+        // Password correct, proceed with sync
+        setShowPasswordModal(false);
+        setSyncing(true);
+        setSyncResult(null);
+        
+        try {
+          const syncResult = await syncAgents();
+          setSyncResult(`Synced ${syncResult.synced} agent(s) from OpenClaw config`);
+          setTimeout(() => setSyncResult(null), 5000);
+        } catch (err) {
+          setSyncResult(err instanceof Error ? err.message : 'Sync failed');
+        } finally {
+          setSyncing(false);
+        }
+      }
     } catch (err) {
-      setSyncResult(err instanceof Error ? err.message : 'Sync failed');
-    } finally {
-      setSyncing(false);
+      setPasswordError('Incorrect password');
     }
   };
 
@@ -125,7 +151,7 @@ export default function Agents() {
             </button>
           )}
           <button
-            onClick={handleSync}
+            onClick={handleSyncClick}
             disabled={syncing}
             className="px-4 py-2 bg-mission-600 hover:bg-mission-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
           >
@@ -133,6 +159,58 @@ export default function Agents() {
           </button>
         </div>
       </div>
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-white mb-4">🔒 Sync from OpenClaw</h2>
+            <p className="text-gray-400 mb-4">Enter password to sync agents from OpenClaw config.</p>
+            
+            <div className="mb-4">
+              <label className="block text-gray-300 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSyncWithPassword();
+                  }
+                }}
+                placeholder="Enter sync password"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-500"
+                autoFocus
+              />
+              {passwordError && (
+                <p className="text-red-400 text-sm mt-1">{passwordError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSyncWithPassword}
+                className="flex-1 px-4 py-2 bg-mission-600 hover:bg-mission-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Verify & Sync
+              </button>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword('');
+                  setPasswordError('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDeployModal && (
         <DeployAgentModal

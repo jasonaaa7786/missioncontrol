@@ -7,7 +7,6 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<'profile' | 'agents' | 'system'>('profile');
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState<any>(null);
 
   useEffect(() => {
     if (activeTab === 'system') {
@@ -28,7 +27,6 @@ export default function Settings() {
     setCheckingUpdates(true);
     try {
       const info = await api.system.checkUpdates();
-      setUpdateInfo(info);
       
       // If update available, send to chat
       if (info.updateAvailable) {
