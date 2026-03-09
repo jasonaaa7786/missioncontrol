@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { projects, agents, schedules } from '../lib/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import SubscriberGrowthChart from '../components/charts/SubscriberGrowthChart';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -71,20 +73,43 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-          <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-          <p className="text-gray-400">No recent activity</p>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest system events</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-400">No recent activity</p>
+          </CardContent>
+        </Card>
 
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-          <h2 className="text-xl font-semibold mb-4">System Status</h2>
-          <div className="space-y-3">
-            <StatusRow label="Backend" status="online" />
-            <StatusRow label="Database" status="online" />
-            <StatusRow label="WebSocket" status="online" />
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>System Status</CardTitle>
+            <CardDescription>All systems operational</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <StatusRow label="Backend" status="online" />
+              <StatusRow label="Database" status="online" />
+              <StatusRow label="WebSocket" status="online" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sample Chart - YouTube Growth Example */}
+      <div className="mb-8">
+        <SubscriberGrowthChart 
+          data={[
+            { date: 'Jan', subscribers: 25000, views: 8000000 },
+            { date: 'Feb', subscribers: 26200, views: 8200000 },
+            { date: 'Mar', subscribers: 27700, views: 8495436 },
+          ]}
+          title="Artist Growth Example (KI/KI)"
+          description="Sample YouTube analytics data"
+        />
       </div>
     </div>
   );

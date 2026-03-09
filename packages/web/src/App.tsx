@@ -12,11 +12,13 @@ import Documents from './pages/Documents';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import ArtistResearch from './pages/ArtistResearch';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
