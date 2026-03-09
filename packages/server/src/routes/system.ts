@@ -80,6 +80,75 @@ const systemRoutes: FastifyPluginAsync = async (fastify) => {
       reply.code(401).send({ valid: false, error: 'Incorrect password' });
     }
   });
+
+  // Update OpenClaw (admin only)
+  fastify.post('/update-openclaw', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
+    try {
+      fastify.log.info('Starting OpenClaw update...');
+      
+      // Get current version
+      const { stdout: currentVersion } = await execAsync('openclaw --version 2>/dev/null');
+      
+      // Update OpenClaw
+      const { stdout: updateOutput, stderr: updateError } = await execAsync('npm install -g openclaw@latest 2>&1', {
+        timeout: 120000, // 2 minute timeout
+      });
+      
+      fastify.log.info({ updateOutput }, 'OpenClaw update output');
+      
+      // Get new version
+      const { stdout: newVersion } = await execAsync('openclaw --version 2>/dev/null');
+      
+      // Check if update was successful
+      if (newVersion.trim() === currentVersion.trim()) {
+        return {
+          success: false,
+          error: 'Update completed but version unchanged',
+          currentVersion: currentVersion.trim(),
+          newVersion: newVersion.trim(),
+          output: updateOutput,
+        };
+      }
+      
+      return {
+        success: true,
+        currentVersion: currentVersion.trim(),
+        newVersion: newVersion.trim(),
+        message: 'OpenClaw updated successfully. Gateway restart recommended.',
+        output: updateOutput,
+      };
+    } catch (error: any) {
+      fastify.log.error(error, 'Failed to update OpenClaw');
+      reply.code(500).send({ 
+        success: false,
+        error: 'Update failed: ' + error.message,
+        stderr: error.stderr || '',
+      });
+    }
+  });
+
+  // Restart OpenClaw Gateway (admin only)
+  fastify.post('/restart-gateway', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
+    try {
+      fastify.log.info('Restarting OpenClaw gateway...');
+      
+      // Restart gateway (fire and forget, will kill this process)
+      execAsync('sleep 2 && systemctl restart openclaw-gateway 2>&1').catch(() => {
+        // Ignore errors since process will be killed
+      });
+      
+      return {
+        success: true,
+        message: 'Gateway restart initiated. Reconnect in 10 seconds.',
+      };
+    } catch (error: any) {
+      fastify.log.error(error, 'Failed to restart gateway');
+      reply.code(500).send({ 
+        success: false,
+        error: 'Restart failed: ' + error.message,
+      });
+    }
+  });
 };
 
 export default systemRoutes;

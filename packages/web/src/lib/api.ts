@@ -275,6 +275,24 @@ export const system = {
     method: 'POST',
     body: JSON.stringify({ password }),
   }),
+  
+  updateOpenclaw: () => fetchAPI<{
+    success: boolean;
+    currentVersion: string;
+    newVersion: string;
+    message?: string;
+    error?: string;
+    output?: string;
+  }>('/api/system/update-openclaw', {
+    method: 'POST',
+  }),
+  
+  restartGateway: () => fetchAPI<{
+    success: boolean;
+    message: string;
+  }>('/api/system/restart-gateway', {
+    method: 'POST',
+  }),
 };
 
 // Uploads API

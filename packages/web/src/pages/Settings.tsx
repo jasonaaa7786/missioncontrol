@@ -7,6 +7,8 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<'profile' | 'agents' | 'system' | 'llm'>('profile');
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'system') {
@@ -28,9 +30,12 @@ export default function Settings() {
     try {
       const info = await api.system.checkUpdates();
       
-      // If update available, send to chat
+      // Reload system info to show update status
+      await loadSystemInfo();
+      
+      // If update available, show alert
       if (info.updateAvailable) {
-        alert(`Update available!\n\nCurrent: ${info.current}\nLatest: ${info.latest}\n\nPlease update OpenClaw manually with: npm install -g openclaw@latest`);
+        alert(`Update available!\n\nCurrent: ${info.current}\nLatest: ${info.latest}\n\nClick "Update Now" to install.`);
       } else {
         alert('You are already on the latest version!');
       }
@@ -39,6 +44,54 @@ export default function Settings() {
       alert('Failed to check for updates');
     } finally {
       setCheckingUpdates(false);
+    }
+  };
+
+  const handleUpdateOpenclaw = async () => {
+    if (!confirm('Update OpenClaw to the latest version?\n\nThis will take 1-2 minutes.')) {
+      return;
+    }
+    
+    setUpdating(true);
+    try {
+      const result = await api.system.updateOpenclaw();
+      
+      if (result.success) {
+        alert(`✅ Update successful!\n\nOld: ${result.currentVersion}\nNew: ${result.newVersion}\n\n${result.message}`);
+        
+        // Reload system info
+        await loadSystemInfo();
+        
+        // Ask if they want to restart gateway
+        if (confirm('Restart OpenClaw Gateway now?\n\nThis will disconnect for ~10 seconds.')) {
+          handleRestartGateway();
+        }
+      } else {
+        alert(`❌ Update failed\n\n${result.error}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to update OpenClaw:', error);
+      alert(`❌ Update failed\n\n${error.message || 'Unknown error'}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRestartGateway = async () => {
+    setRestarting(true);
+    try {
+      await api.system.restartGateway();
+      
+      alert('Gateway restarting...\n\nPage will reload in 10 seconds.');
+      
+      // Reload page after 10 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 10000);
+    } catch (error: any) {
+      console.error('Failed to restart gateway:', error);
+      alert(`❌ Restart failed\n\n${error.message || 'Unknown error'}`);
+      setRestarting(false);
     }
   };
 
@@ -229,13 +282,31 @@ export default function Settings() {
                       <span className="text-green-400">Up to Date</span>
                     )}
                   </div>
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2">
                     <button
                       onClick={handleCheckUpdates}
-                      disabled={checkingUpdates}
+                      disabled={checkingUpdates || updating}
                       className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded text-sm font-medium transition-colors"
                     >
                       {checkingUpdates ? 'Checking...' : 'Check for Updates'}
+                    </button>
+                    
+                    {systemInfo?.openclaw?.updateAvailable && (
+                      <button
+                        onClick={handleUpdateOpenclaw}
+                        disabled={updating || checkingUpdates}
+                        className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded text-sm font-medium transition-colors"
+                      >
+                        {updating ? 'Updating... (1-2 min)' : '⬆️ Update Now'}
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={handleRestartGateway}
+                      disabled={restarting || updating || checkingUpdates}
+                      className="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white rounded text-sm font-medium transition-colors"
+                    >
+                      {restarting ? 'Restarting...' : '🔄 Restart Gateway'}
                     </button>
                   </div>
                 </div>
