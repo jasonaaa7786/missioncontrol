@@ -159,7 +159,7 @@ async function runAgentHeartbeat(agentId, reason, tasks = []) {
     
     // Spawn agent via OpenClaw CLI
     // Note: Using --profile livescape to use correct agent profile
-    const command = `cd ~/livescape-marketing/${agentId} && openclaw sessions spawn --task "${heartbeatMessage}" --mode run --runtime subagent --profile livescape --timeout 600`;
+    const command = `cd ~/livescape-marketing/${agentId} && openclaw sessions spawn --mode run --runtime subagent --profile livescape --timeout 600 "${heartbeatMessage}"`;
     
     console.log(`[${agentId}] Spawning agent...`);
     const { stdout, stderr } = await execAsync(command, {
