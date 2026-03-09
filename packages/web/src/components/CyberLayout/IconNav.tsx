@@ -7,7 +7,9 @@ import {
   CalendarBlank, 
   ChatCircle, 
   Gear,
-  FlowArrow
+  FlowArrow,
+  MapTrifold,
+  Database as DatabaseIcon
 } from '@phosphor-icons/react';
 
 interface NavItem {
@@ -18,7 +20,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/dashboard', icon: <ChartLine size={24} />, label: 'Overview' },
-  { to: '/artist-research', icon: <MagnifyingGlass size={24} />, label: 'Scout' },
+  { to: '/artist-research', icon: <MagnifyingGlass size={24} />, label: 'Artist Search' },
+  { to: '/venue-search', icon: <MapTrifold size={24} />, label: 'Venue Search' },
+  { to: '/database-search', icon: <DatabaseIcon size={24} />, label: 'Database' },
   { to: '/projects', icon: <FolderOpen size={24} />, label: 'Projects' },
   { to: '/agents', icon: <Robot size={24} />, label: 'Agents' },
   { to: '/pipeline', icon: <FlowArrow size={24} />, label: 'Pipeline' },

@@ -15,8 +15,8 @@ import {
 export default function Dashboard() {
   const [stats, setStats] = useState({
     projects: 0,
-    tasks: 0,
-    agents: 0,
+    activeAgents: 0,
+    runningAgents: 0,
     schedules: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -30,13 +30,23 @@ export default function Dashboard() {
           schedules.list(),
         ]);
 
-        const totalTasks = projectsData.reduce((sum: number, p: any) => sum + (p._count?.tasks || 0), 0);
+        // Count active projects (status = 'active')
+        const activeProjects = projectsData.filter((p: any) => p.status === 'active').length;
+        
+        // Count active agents (isActive = true)
+        const activeAgents = agentsData.filter((a: any) => a.isActive).length;
+        
+        // Count "running" agents (placeholder - will wire to real-time data)
+        const runningAgents = 0; // TODO: Wire to WebSocket for real-time agent runs
+        
+        // Count enabled schedules
+        const enabledSchedules = schedulesData.filter((s: any) => s.enabled).length;
 
         setStats({
-          projects: projectsData.filter((p: any) => p.status === 'active').length,
-          tasks: totalTasks,
-          agents: agentsData.filter((a: any) => a.isActive).length,
-          schedules: schedulesData.filter((s: any) => s.enabled).length,
+          projects: activeProjects,
+          activeAgents: activeAgents,
+          runningAgents: runningAgents,
+          schedules: enabledSchedules,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard stats:', err);
@@ -46,15 +56,19 @@ export default function Dashboard() {
     };
 
     fetchStats();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="fade-in-up">
-        <h1 className="cyber-heading text-5xl font-bold mb-3">Intelligence Overview</h1>
+        <h1 className="cyber-heading text-5xl font-bold mb-3">LIVESCAPE MISSION CONTROL</h1>
         <p className="text-cyber-text-secondary text-lg font-body">
-          Livescape AI Operations Dashboard
+          Intelligence & Operations Hub
         </p>
       </div>
 
@@ -100,20 +114,23 @@ export default function Dashboard() {
           icon={<ChartLine size={28} />}
           label="Active Projects" 
           value={loading ? '-' : stats.projects.toString()} 
+          sublabel="Mission folders"
           color="from-cyber-cyan to-blue-600"
           delay={2}
         />
         <MetricCard 
           icon={<Target size={28} />}
-          label="In Progress Tasks" 
-          value={loading ? '-' : stats.tasks.toString()} 
+          label="Running Agents" 
+          value={loading ? '-' : stats.runningAgents.toString()} 
+          sublabel="Active research tasks"
           color="from-cyber-purple to-purple-600"
           delay={3}
         />
         <MetricCard 
           icon={<Users size={28} />}
-          label="Active Agents" 
-          value={loading ? '-' : stats.agents.toString()} 
+          label="Agent Swarm" 
+          value={loading ? '-' : stats.activeAgents.toString()} 
+          sublabel="Online & ready"
           color="from-cyber-green to-green-600"
           delay={4}
         />
@@ -121,6 +138,7 @@ export default function Dashboard() {
           icon={<Calendar size={28} />}
           label="Scheduled Jobs" 
           value={loading ? '-' : stats.schedules.toString()} 
+          sublabel="Cron automation"
           color="from-cyber-yellow to-yellow-600"
           delay={5}
         />
@@ -179,10 +197,11 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ icon, label, value, color, delay }: { 
+function MetricCard({ icon, label, value, sublabel, color, delay }: { 
   icon: React.ReactNode; 
   label: string; 
   value: string; 
+  sublabel?: string;
   color: string;
   delay: number;
 }) {
@@ -198,9 +217,14 @@ function MetricCard({ icon, label, value, color, delay }: {
           {value}
         </div>
       </div>
-      <p className="text-sm text-cyber-text-dim uppercase tracking-wide font-heading">
+      <p className="text-sm text-cyber-text-primary uppercase tracking-wide font-heading mb-1">
         {label}
       </p>
+      {sublabel && (
+        <p className="text-xs text-cyber-text-dim font-body">
+          {sublabel}
+        </p>
+      )}
     </div>
   );
 }

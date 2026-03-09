@@ -12,6 +12,8 @@ import Documents from './pages/Documents';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import ArtistResearch from './pages/ArtistResearch';
+import VenueSearch from './pages/VenueSearch';
+import DatabaseSearch from './pages/DatabaseSearch';
 import Pipeline from './pages/Pipeline';
 import { Toaster } from './components/ui/sonner';
 import './styles/cyberpunk.css';
@@ -33,6 +35,9 @@ function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="artist-research" element={<ArtistResearch />} />
+            <Route path="venue-search" element={<VenueSearch />} />
+            <Route path="database-search" element={<DatabaseSearch />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="agents" element={<Agents />} />
@@ -40,7 +45,6 @@ function App() {
             <Route path="scheduler" element={<Scheduler />} />
             <Route path="documents" element={<Documents />} />
             <Route path="chat" element={<Chat />} />
-            <Route path="artist-research" element={<ArtistResearch />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

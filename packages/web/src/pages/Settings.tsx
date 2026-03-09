@@ -4,7 +4,7 @@ import * as api from '../lib/api';
 
 export default function Settings() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'agents' | 'system'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'agents' | 'system' | 'llm'>('profile');
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
 
@@ -80,6 +80,16 @@ export default function Settings() {
           }`}
         >
           System
+        </button>
+        <button
+          onClick={() => setActiveTab('llm')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'llm'
+              ? 'text-blue-400 border-b-2 border-blue-400'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          LLM
         </button>
       </div>
 
@@ -313,6 +323,144 @@ export default function Settings() {
                   <p>For issues or feature requests, contact your administrator.</p>
                   <p className="text-xs text-gray-500">Mission Control is built on OpenClaw infrastructure.</p>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LLM Tab */}
+      {activeTab === 'llm' && (
+        <div className="max-w-4xl">
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+            <h2 className="text-xl font-bold text-white mb-4">Language Model Configuration</h2>
+            <p className="text-gray-400 mb-6">
+              Configure which LLM powers Mission Control and agent swarm operations
+            </p>
+
+            {/* Current Main LLM */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Main LLM (Active)</h3>
+              <div className="cyber-card cyber-glow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="text-lg font-heading font-bold text-cyber-cyan mb-1">
+                      Claude Sonnet 4.5
+                    </h4>
+                    <p className="text-sm text-cyber-text-dim font-mono">anthropic/claude-sonnet-4-5</p>
+                  </div>
+                  <div className="cyber-badge cyber-badge-success">ACTIVE</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-cyber-text-dim mb-1">Provider</p>
+                    <p className="text-cyber-text-primary font-mono">Anthropic</p>
+                  </div>
+                  <div>
+                    <p className="text-cyber-text-dim mb-1">Context Window</p>
+                    <p className="text-cyber-text-primary font-mono">200K tokens</p>
+                  </div>
+                  <div>
+                    <p className="text-cyber-text-dim mb-1">Best For</p>
+                    <p className="text-cyber-text-primary font-mono">Analysis, Reasoning</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Backup LLMs */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Backup LLMs</h3>
+              <div className="space-y-3">
+                {/* Gemini Flash */}
+                <div className="cyber-card p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-heading font-bold text-cyber-text-primary mb-1">
+                        Gemini 2.0 Flash
+                      </h4>
+                      <p className="text-xs text-cyber-text-dim font-mono">google/gemini-2.0-flash-exp</p>
+                    </div>
+                    <button className="cyber-badge cyber-badge-info cursor-pointer hover:bg-cyber-cyan/20">
+                      Switch to Gemini
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-xs mt-3">
+                    <div>
+                      <span className="text-cyber-text-dim">Provider: </span>
+                      <span className="text-cyber-text-secondary font-mono">Google</span>
+                    </div>
+                    <div>
+                      <span className="text-cyber-text-dim">Context: </span>
+                      <span className="text-cyber-text-secondary font-mono">1M tokens</span>
+                    </div>
+                    <div>
+                      <span className="text-cyber-text-dim">Best For: </span>
+                      <span className="text-cyber-text-secondary font-mono">Speed, Multimodal</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GPT-4o */}
+                <div className="cyber-card p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-heading font-bold text-cyber-text-primary mb-1">
+                        GPT-4o
+                      </h4>
+                      <p className="text-xs text-cyber-text-dim font-mono">openai/gpt-4o</p>
+                    </div>
+                    <button className="cyber-badge cyber-badge-info cursor-pointer hover:bg-cyber-cyan/20">
+                      Switch to GPT-4o
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-xs mt-3">
+                    <div>
+                      <span className="text-cyber-text-dim">Provider: </span>
+                      <span className="text-cyber-text-secondary font-mono">OpenAI</span>
+                    </div>
+                    <div>
+                      <span className="text-cyber-text-dim">Context: </span>
+                      <span className="text-cyber-text-secondary font-mono">128K tokens</span>
+                    </div>
+                    <div>
+                      <span className="text-cyber-text-dim">Best For: </span>
+                      <span className="text-cyber-text-secondary font-mono">Vision, General</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Model Switching Info */}
+            <div className="bg-cyber-bg-tertiary border border-cyber-border rounded-lg p-4">
+              <h4 className="text-sm font-heading font-bold text-cyber-yellow mb-2">⚠️ Model Switching</h4>
+              <p className="text-xs text-cyber-text-secondary mb-3">
+                Switching LLMs will affect all Mission Control operations and agent swarm behavior. 
+                Changes take effect on next agent spawn.
+              </p>
+              <p className="text-xs text-cyber-text-dim font-mono">
+                Current implementation: OpenClaw CLI uses default model from profile config. 
+                To switch: Edit ~/.openclaw-livescape/config.json → "defaultModel" field.
+              </p>
+            </div>
+          </div>
+
+          {/* Usage Stats (Future) */}
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <h3 className="text-lg font-bold text-white mb-4">Model Usage Stats</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-mono font-bold text-cyber-cyan mb-1">142</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Requests Today</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-mono font-bold text-cyber-purple mb-1">2.3M</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Tokens Used</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-mono font-bold text-cyber-green mb-1">$4.12</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Cost Today</div>
               </div>
             </div>
           </div>
