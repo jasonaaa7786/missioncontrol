@@ -32,8 +32,12 @@ export default function IconNav() {
     <nav className="fixed left-0 top-0 h-screen w-[62px] bg-cyber-bg-secondary border-r border-cyber-border flex flex-col items-center py-6 z-50">
       {/* Logo */}
       <div className="mb-8">
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyber-cyan to-cyber-purple flex items-center justify-center font-heading text-xs font-bold">
-          CTRL
+        <div className="w-10 h-10 rounded-lg overflow-hidden">
+          <img 
+            src="/assets/l3-logo.jpg" 
+            alt="L3" 
+            className="w-full h-full object-contain"
+          />
         </div>
       </div>
 
