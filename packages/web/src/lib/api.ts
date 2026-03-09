@@ -389,3 +389,67 @@ export const youtube = {
       params: { q: query, maxResults: maxResults.toString() },
     }),
 };
+
+// Tasks V2 API
+export const tasksV2 = {
+  list: (filters?: { projectId?: string; status?: string; assignedAgent?: string }) =>
+    fetchAPI<any[]>('/api/tasks-v2', { params: filters as any }),
+  
+  get: (id: string) => fetchAPI<any>(`/api/tasks-v2/${id}`),
+  
+  create: (data: {
+    projectId: string;
+    title: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+    assignedAgent?: string;
+    tags?: string[];
+    dueAt?: string;
+  }) => fetchAPI<any>('/api/tasks-v2', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  update: (id: string, data: any) => fetchAPI<any>(`/api/tasks-v2/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  
+  updateStatus: (id: string, status: string) => fetchAPI<any>(`/api/tasks-v2/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
+  
+  delete: (id: string) => fetchAPI<void>(`/api/tasks-v2/${id}`, {
+    method: 'DELETE',
+  }),
+  
+  addComment: (id: string, data: { content: string; agentId?: string; mentions?: string[] }) =>
+    fetchAPI<any>(`/api/tasks-v2/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  getComments: (id: string) => fetchAPI<any[]>(`/api/tasks-v2/${id}/comments`),
+};
+
+// Activity API
+export const activity = {
+  feed: (filters?: { type?: string; agentId?: string; taskId?: string; projectId?: string; limit?: number }) =>
+    fetchAPI<any[]>('/api/activity/feed', { params: filters as any }),
+  
+  log: (data: {
+    type: string;
+    agentId?: string;
+    taskId?: string;
+    projectId?: string;
+    message: string;
+    metadata?: any;
+  }) => fetchAPI<any>('/api/activity/log', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  stats: () => fetchAPI<{ total: number; today: number; byType: Record<string, number> }>('/api/activity/stats'),
+};

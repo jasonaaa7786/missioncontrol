@@ -50,19 +50,52 @@ model Task {
   projectId     String
   title         String
   description   String?
-  status        String   @default("backlog") // backlog, planned, in_progress, blocked, done
-  priority      String   @default("medium") // low, medium, high, critical
+  status        String   @default("inbox") // inbox, assigned, active, review, waiting, blocked, done
+  priority      String   @default("normal") // urgent, high, normal, low
   assignedAgent String?
+  tags          String   @default("[]") // JSON array: ["strategy", "gap-fill", "urgent"]
   position      Int      @default(0)
   dueAt         DateTime?
   completedAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments TaskComment[]
 
   @@index([projectId, status])
   @@index([status])
+  @@index([assignedAgent])
+  @@index([createdAt])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  agentId   String?
+  userId    String?
+  content   String
+  mentions  String   @default("[]") // JSON array: ["@Scout", "@Pulse"]
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  type      String   // task_created, task_updated, comment_added, status_changed, agent_started, agent_completed, decision_gate
+  agentId   String?
+  taskId    String?
+  projectId String?
+  message   String
+  metadata  String   @default("{}") // JSON object for additional context
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([agentId])
+  @@index([taskId])
   @@index([createdAt])
 }
 
