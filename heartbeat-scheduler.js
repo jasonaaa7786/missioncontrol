@@ -10,7 +10,7 @@
  *   node heartbeat-scheduler.js
  * 
  * Or install as cron job:
- *   */30 * * * * cd /root/mission-control && node heartbeat-scheduler.js >> /var/log/heartbeat.log 2>&1
+ *   (every 30 min) cd /root/mission-control && node heartbeat-scheduler.js >> /var/log/heartbeat.log 2>&1
  */
 
 const { PrismaClient } = require('@prisma/client');
