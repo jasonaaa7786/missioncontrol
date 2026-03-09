@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { projects, agents, schedules } from '../lib/api';
+import { projects, agents, schedules, tasksV2 } from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import SubscriberGrowthChart from '../components/charts/SubscriberGrowthChart';
 import { 
@@ -9,14 +9,15 @@ import {
   Calendar,
   CheckCircle,
   Clock,
-  Target
+  Target,
+  Queue
 } from '@phosphor-icons/react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
     projects: 0,
+    tasksInQueue: 0,
     activeAgents: 0,
-    runningAgents: 0,
     schedules: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -24,10 +25,11 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [projectsData, agentsData, schedulesData] = await Promise.all([
+        const [projectsData, agentsData, schedulesData, tasksData] = await Promise.all([
           projects.list(),
           agents.list(),
           schedules.list(),
+          tasksV2.list(),
         ]);
 
         // Count active projects (status = 'active')
@@ -36,16 +38,16 @@ export default function Dashboard() {
         // Count active agents (isActive = true)
         const activeAgents = agentsData.filter((a: any) => a.isActive).length;
         
-        // Count "running" agents (placeholder - will wire to real-time data)
-        const runningAgents = 0; // TODO: Wire to WebSocket for real-time agent runs
+        // Count tasks in queue (not done)
+        const tasksInQueue = tasksData.filter((t: any) => t.status !== 'done').length;
         
         // Count enabled schedules
         const enabledSchedules = schedulesData.filter((s: any) => s.enabled).length;
 
         setStats({
           projects: activeProjects,
+          tasksInQueue: tasksInQueue,
           activeAgents: activeAgents,
-          runningAgents: runningAgents,
           schedules: enabledSchedules,
         });
       } catch (err) {
@@ -119,10 +121,10 @@ export default function Dashboard() {
           delay={2}
         />
         <MetricCard 
-          icon={<Target size={28} />}
-          label="Running Agents" 
-          value={loading ? '-' : stats.runningAgents.toString()} 
-          sublabel="Active research tasks"
+          icon={<Queue size={28} />}
+          label="Tasks in Queue" 
+          value={loading ? '-' : stats.tasksInQueue.toString()} 
+          sublabel="Pending work items"
           color="from-cyber-purple to-purple-600"
           delay={3}
         />
@@ -136,9 +138,9 @@ export default function Dashboard() {
         />
         <MetricCard 
           icon={<Calendar size={28} />}
-          label="Scheduled Jobs" 
+          label="Heartbeats" 
           value={loading ? '-' : stats.schedules.toString()} 
-          sublabel="Cron automation"
+          sublabel="Automated checks"
           color="from-cyber-yellow to-yellow-600"
           delay={5}
         />

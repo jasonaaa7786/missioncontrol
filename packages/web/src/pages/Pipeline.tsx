@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Plus, X, CalendarBlank, User, Tag } from '@phosphor-icons/react';
 import { tasksV2, projects as projectsAPI } from '../lib/api';
 import { toast } from 'sonner';
+import TaskDetailModal from '../components/TaskDetailModal';
 
 const STATUSES = [
   { key: 'inbox', label: 'Inbox', icon: '📥', color: 'text-cyber-text-dim' },
@@ -370,54 +371,3 @@ function CreateTaskModal({ projects, onClose, onSuccess }: any) {
 }
 
 // Task Detail Modal (placeholder - to be enhanced)
-function TaskDetailModal({ task, onClose, onUpdate }: any) {
-  return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <Card className="cyber-card w-full max-w-4xl max-h-[90vh] overflow-auto">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-heading text-xl font-bold">{task.title}</h2>
-            <button onClick={onClose} className="text-cyber-text-dim hover:text-cyber-cyan">
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Description</h3>
-              <p className="text-cyber-text-secondary">{task.description || 'No description'}</p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Status</h3>
-                <span className="cyber-badge cyber-badge-info">{task.status}</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Priority</h3>
-                <span className="cyber-badge cyber-badge-warning">{task.priority}</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Assigned To</h3>
-                <span className="text-cyber-text-secondary font-mono text-sm">
-                  {task.assignedAgent || 'Unassigned'}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Comments</h3>
-              <p className="text-cyber-text-dim text-sm">Comments feature coming soon...</p>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-6 border-t border-cyber-border mt-6">
-            <Button variant="ghost" onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
