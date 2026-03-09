@@ -14,6 +14,7 @@ import chatRoutes from './routes/chat.js';
 import fileRoutes from './routes/files.js';
 import systemRoutes from './routes/system.js';
 import uploadsRoutes from './routes/uploads.js';
+import youtubeRoutes from './routes/youtube.js';
 
 const prisma = new PrismaClient();
 const fastify = Fastify({
@@ -73,6 +74,7 @@ await fastify.register(chatRoutes, { prefix: '/api/chat' });
 await fastify.register(fileRoutes, { prefix: '/api/files' });
 await fastify.register(systemRoutes, { prefix: '/api/system' });
 await fastify.register(uploadsRoutes, { prefix: '/api/uploads' });
+await fastify.register(youtubeRoutes, { prefix: '/api/youtube' });
 
 // WebSocket endpoint
 fastify.get('/ws', { websocket: true }, (socket, req) => {

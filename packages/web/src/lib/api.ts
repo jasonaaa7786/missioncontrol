@@ -340,3 +340,34 @@ export const chat = {
       method: 'DELETE',
     }),
 };
+
+// YouTube API
+export const youtube = {
+  getChannel: (channelId: string) =>
+    fetchAPI<{
+      channelId: string;
+      title: string;
+      description: string;
+      customUrl?: string;
+      publishedAt: string;
+      thumbnails: any;
+      country?: string;
+      statistics: {
+        subscriberCount: number;
+        viewCount: number;
+        videoCount: number;
+      };
+    }>(`/api/youtube/channel/${channelId}`),
+  
+  search: (query: string, maxResults: number = 5) =>
+    fetchAPI<{
+      channels: Array<{
+        channelId: string;
+        title: string;
+        description: string;
+        thumbnails: any;
+      }>;
+    }>('/api/youtube/search', {
+      params: { q: query, maxResults: maxResults.toString() },
+    }),
+};

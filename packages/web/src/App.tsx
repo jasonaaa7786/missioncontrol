@@ -11,6 +11,7 @@ import Scheduler from './pages/Scheduler';
 import Documents from './pages/Documents';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
+import ArtistResearch from './pages/ArtistResearch';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
             <Route path="scheduler" element={<Scheduler />} />
             <Route path="documents" element={<Documents />} />
             <Route path="chat" element={<Chat />} />
+            <Route path="artist-research" element={<ArtistResearch />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
