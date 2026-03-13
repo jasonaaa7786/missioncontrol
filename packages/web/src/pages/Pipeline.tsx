@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Plus, X, CalendarBlank, User, Tag } from '@phosphor-icons/react';
+import { Plus, X, CalendarBlank, User, Tag, MagnifyingGlass, Funnel } from '@phosphor-icons/react';
 import { tasksV2, projects as projectsAPI } from '../lib/api';
 import { toast } from 'sonner';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -24,6 +24,8 @@ export default function Pipeline() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
   useEffect(() => {
     loadData();
@@ -57,8 +59,39 @@ export default function Pipeline() {
   };
 
   const getTasksByStatus = (status: string) => {
-    return tasks.filter(task => task.status === status);
+    return tasks.filter(task => {
+      if (task.status !== status) return false;
+
+      // Apply search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const titleMatch = task.title?.toLowerCase().includes(query);
+        const descMatch = task.description?.toLowerCase().includes(query);
+        const agentMatch = task.assignedAgent?.toLowerCase().includes(query);
+        const tagsStr = task.tags ? JSON.parse(task.tags).join(' ').toLowerCase() : '';
+        const tagMatch = tagsStr.includes(query);
+        if (!titleMatch && !descMatch && !agentMatch && !tagMatch) return false;
+      }
+
+      // Apply priority filter
+      if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+
+      return true;
+    });
   };
+
+  const filteredTaskCount = tasks.filter(task => {
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const titleMatch = task.title?.toLowerCase().includes(query);
+      const descMatch = task.description?.toLowerCase().includes(query);
+      const agentMatch = task.assignedAgent?.toLowerCase().includes(query);
+      const tagsStr = task.tags ? JSON.parse(task.tags).join(' ').toLowerCase() : '';
+      if (!titleMatch && !descMatch && !agentMatch && !tagsStr.includes(query)) return false;
+    }
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+    return true;
+  }).length;
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -77,7 +110,7 @@ export default function Pipeline() {
         <div>
           <h1 className="cyber-heading text-4xl font-bold mb-2">Mission Queue</h1>
           <p className="text-cyber-text-secondary font-body">
-            Task workflow - {tasks.length} total tasks
+            Task workflow — {tasks.length} total tasks
           </p>
         </div>
         <Button
@@ -89,8 +122,49 @@ export default function Pipeline() {
         </Button>
       </div>
 
+      {/* Search & Filter Bar */}
+      <div className="flex items-center gap-4 fade-in-up stagger-1">
+        <div className="relative flex-1">
+          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyber-text-dim" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tasks by title, description, agent, or tag..."
+            className="w-full pl-9 pr-4 py-2 bg-cyber-bg-tertiary border border-cyber-border rounded text-sm text-cyber-text-primary font-body placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-cyber-text-dim hover:text-cyber-cyan"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Funnel size={16} className="text-cyber-text-dim" />
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="px-3 py-2 bg-cyber-bg-tertiary border border-cyber-border rounded text-sm text-cyber-text-primary font-mono focus:outline-none focus:border-cyber-cyan"
+          >
+            <option value="all">All Priorities</option>
+            <option value="urgent">🔴 Urgent</option>
+            <option value="high">🟡 High</option>
+            <option value="normal">🔵 Normal</option>
+            <option value="low">⚪ Low</option>
+          </select>
+        </div>
+        {(searchQuery || priorityFilter !== 'all') && (
+          <span className="text-xs text-cyber-text-dim font-mono whitespace-nowrap">
+            {filteredTaskCount} of {tasks.length} tasks
+          </span>
+        )}
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-7 gap-4 fade-in-up stagger-1">
+      <div className="grid grid-cols-7 gap-4 fade-in-up stagger-2">
         {STATUSES.map((status) => {
           const count = getTasksByStatus(status.key).length;
           return (

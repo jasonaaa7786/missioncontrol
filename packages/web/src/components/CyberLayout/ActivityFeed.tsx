@@ -75,6 +75,79 @@ export default function ActivityFeed() {
     return labels[type] || type;
   };
 
+  const formatMessage = (activity: Activity) => {
+    const msg = activity.message;
+    const agent = activity.agentId?.replace('livescape-', '').toUpperCase();
+
+    // Clean up common verbose messages
+    if (msg.includes('heartbeat triggered')) {
+      return `${agent || 'Agent'} heartbeat check completed`;
+    }
+    if (msg.includes('heartbeat started')) {
+      return `${agent || 'Agent'} started processing tasks`;
+    }
+    if (msg.includes('HEARTBEAT.md updated')) {
+      return `${agent || 'Agent'} updated status file`;
+    }
+    // Truncate long messages
+    if (msg.length > 80) {
+      return msg.substring(0, 77) + '...';
+    }
+    return msg;
+  };
+
+  const formatMetadata = (metadata: any, type: string) => {
+    if (!metadata) return '';
+
+    const parts: string[] = [];
+
+    if (metadata.reason) {
+      const reasons: Record<string, string> = {
+        has_tasks: 'Active tasks found',
+        no_tasks: 'No pending tasks',
+        scheduled: 'Scheduled run',
+        manual: 'Manual trigger',
+      };
+      parts.push(reasons[metadata.reason] || metadata.reason);
+    }
+
+    if (metadata.taskCount !== undefined) {
+      parts.push(`${metadata.taskCount} task${metadata.taskCount !== 1 ? 's' : ''}`);
+    }
+
+    if (metadata.status) {
+      parts.push(`Status: ${metadata.status}`);
+    }
+
+    if (metadata.oldStatus && metadata.newStatus) {
+      parts.push(`${metadata.oldStatus} → ${metadata.newStatus}`);
+    }
+
+    if (metadata.priority) {
+      parts.push(`Priority: ${metadata.priority}`);
+    }
+
+    if (metadata.duration) {
+      parts.push(`Duration: ${metadata.duration}`);
+    }
+
+    if (metadata.tokens) {
+      parts.push(`${metadata.tokens.toLocaleString()} tokens`);
+    }
+
+    // Fallback: if no known fields matched, show first 2 key-values
+    if (parts.length === 0) {
+      const entries = Object.entries(metadata).filter(([k]) => !k.startsWith('_') && k !== 'heartbeatPath');
+      for (const [key, value] of entries.slice(0, 2)) {
+        if (typeof value === 'string' || typeof value === 'number') {
+          parts.push(`${key}: ${value}`);
+        }
+      }
+    }
+
+    return parts.join(' · ');
+  };
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -144,13 +217,13 @@ export default function ActivityFeed() {
 
               {/* Message */}
               <p className="text-sm text-cyber-text-primary font-medium mb-1">
-                {activity.message}
+                {formatMessage(activity)}
               </p>
 
-              {/* Metadata */}
+              {/* Metadata - formatted human-readable */}
               {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-                <p className="text-xs text-cyber-text-secondary font-mono leading-relaxed">
-                  {JSON.stringify(activity.metadata, null, 2).substring(0, 100)}
+                <p className="text-xs text-cyber-text-secondary leading-relaxed">
+                  {formatMetadata(activity.metadata, activity.type)}
                 </p>
               )}
 

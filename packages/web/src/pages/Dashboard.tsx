@@ -15,8 +15,10 @@ import {
   Robot,
   FileText,
   ChatCircle,
-  ArrowRight
+  ArrowRight,
+  WarningCircle
 } from '@phosphor-icons/react';
+import { Skeleton } from '../components/ui/skeleton';
 
 interface Agent {
   id: string;
@@ -46,6 +48,7 @@ export default function Dashboard() {
   const [briefingItems, setBriefingItems] = useState<BriefingItem[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Live clock
   useEffect(() => {
@@ -97,6 +100,7 @@ export default function Dashboard() {
         setBriefingItems(activityData);
       } catch (err) {
         console.error('Failed to fetch dashboard stats:', err);
+        setError('Failed to load dashboard data. Retrying...');
       } finally {
         setLoading(false);
       }
@@ -127,6 +131,34 @@ export default function Dashboard() {
     }
   };
 
+  // Format briefing messages to be human-readable
+  const formatBriefingMessage = (item: BriefingItem) => {
+    const agent = item.agentId?.replace('livescape-', '').toUpperCase();
+    const msg = item.message;
+
+    // Clean up verbose heartbeat/agent messages
+    if (msg.includes('heartbeat triggered') && msg.includes('HEARTBEAT.md updated')) {
+      return `${agent || 'Agent'} completed routine check — status updated`;
+    }
+    if (msg.includes('heartbeat started') && msg.includes('has_tasks')) {
+      return `${agent || 'Agent'} picked up pending tasks and began processing`;
+    }
+    if (msg.includes('heartbeat triggered')) {
+      return `${agent || 'Agent'} ran scheduled health check`;
+    }
+    if (msg.includes('heartbeat started')) {
+      return `${agent || 'Agent'} started a new work session`;
+    }
+    if (item.type === 'task_created') {
+      return msg.length > 60 ? msg.substring(0, 57) + '...' : msg;
+    }
+    if (item.type === 'status_changed') {
+      return msg.length > 60 ? msg.substring(0, 57) + '...' : msg;
+    }
+    // Default: truncate long messages
+    return msg.length > 70 ? msg.substring(0, 67) + '...' : msg;
+  };
+
   // Format date for the briefing header
   const day = currentTime.getDate().toString().padStart(2, '0');
   const month = currentTime.toLocaleString('en-US', { month: 'short' }).toUpperCase();
@@ -148,6 +180,14 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Error Banner */}
+      {error && (
+        <div className="cyber-card border-cyber-red/50 p-4 flex items-center gap-3 fade-in-up">
+          <WarningCircle size={20} className="text-cyber-red flex-shrink-0" />
+          <p className="text-sm text-cyber-red">{error}</p>
+        </div>
+      )}
+
       {/* Today's Briefing Banner */}
       <div className="cyber-card cyber-glow p-6 fade-in-up stagger-1">
         <div className="flex items-start justify-between">
@@ -156,12 +196,18 @@ export default function Dashboard() {
               TODAY'S INTELLIGENCE BRIEFING
             </h2>
             <div className="space-y-2 text-sm">
-              {briefingItems.length > 0 ? (
+              {loading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ) : briefingItems.length > 0 ? (
                 briefingItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
                     {getBriefingIcon(item.type)}
                     <span className="text-cyber-text-primary">
-                      {item.message}
+                      {formatBriefingMessage(item)}
                     </span>
                   </div>
                 ))
@@ -227,7 +273,18 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {agentsList.length > 0 ? (
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="cyber-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-2 w-2 rounded-full" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              ))
+            ) : agentsList.length > 0 ? (
               agentsList.map((agent) => (
                 <AgentStatusCard
                   key={agent.id}

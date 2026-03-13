@@ -24,7 +24,7 @@ export default function Documents() {
   const [selectedFile, setSelectedFile] = useState<FileItemWithProject | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [currentPath, setCurrentPath] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -34,14 +34,17 @@ export default function Documents() {
 
   useEffect(() => {
     if (selectedProject === 'all-documents') {
-      browseAllProjects();
+      // Only browse if projects have loaded
+      if (projects.length > 0) {
+        browseAllProjects();
+      }
     } else if (selectedProject) {
       const project = projects.find(p => p.id === selectedProject);
       if (project?.outputDir) {
         browseDirectory(project.outputDir);
       }
     }
-  }, [selectedProject]);
+  }, [selectedProject, projects]);
 
   useEffect(() => {
     // Filter files based on search query
@@ -63,6 +66,7 @@ export default function Documents() {
       setSelectedProject('all-documents');
     } catch (err: any) {
       setError(err.message || 'Failed to load projects');
+      setLoading(false);
     }
   };
 
