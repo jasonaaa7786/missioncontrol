@@ -1,17 +1,39 @@
 import { useState, useEffect } from 'react';
-import { projects, agents, schedules, tasksV2 } from '../lib/api';
+import { projects, agents, schedules, tasksV2, activity as activityAPI } from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import SubscriberGrowthChart from '../components/charts/SubscriberGrowthChart';
-import { 
-  ChartLine, 
-  TrendUp, 
-  Users, 
+import {
+  ChartLine,
+  TrendUp,
+  Users,
   Calendar,
   CheckCircle,
   Clock,
-  Target,
-  Queue
+  Queue,
+  Warning,
+  Lightning,
+  Robot,
+  FileText,
+  ChatCircle,
+  ArrowRight
 } from '@phosphor-icons/react';
+
+interface Agent {
+  id: string;
+  name: string;
+  agentId: string;
+  isActive: boolean;
+  model?: string;
+  workDir?: string;
+}
+
+interface BriefingItem {
+  id: string;
+  type: string;
+  message: string;
+  agentId?: string | null;
+  createdAt: string;
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -20,27 +42,47 @@ export default function Dashboard() {
     activeAgents: 0,
     schedules: 0,
   });
+  const [agentsList, setAgentsList] = useState<Agent[]>([]);
+  const [briefingItems, setBriefingItems] = useState<BriefingItem[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
+
+  // Live clock
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [projectsData, agentsData, schedulesData, tasksData] = await Promise.all([
+        // Use Promise.allSettled so one failing API doesn't break everything
+        const results = await Promise.allSettled([
           projects.list(),
           agents.list(),
           schedules.list(),
           tasksV2.list(),
+          activityAPI.feed({ limit: 3 }),
         ]);
+
+        const [projectsResult, agentsResult, schedulesResult, tasksResult, activityResult] = results;
+
+        // Extract data safely from settled promises
+        const projectsData = projectsResult.status === 'fulfilled' ? projectsResult.value : [];
+        const agentsData = agentsResult.status === 'fulfilled' ? agentsResult.value : [];
+        const schedulesData = schedulesResult.status === 'fulfilled' ? schedulesResult.value : [];
+        const tasksData = tasksResult.status === 'fulfilled' ? tasksResult.value : [];
+        const activityData = activityResult.status === 'fulfilled' ? activityResult.value : [];
 
         // Count active projects (status = 'active')
         const activeProjects = projectsData.filter((p: any) => p.status === 'active').length;
-        
+
         // Count active agents (isActive = true)
         const activeAgents = agentsData.filter((a: any) => a.isActive).length;
-        
+
         // Count tasks in queue (not done)
         const tasksInQueue = tasksData.filter((t: any) => t.status !== 'done').length;
-        
+
         // Count enabled schedules
         const enabledSchedules = schedulesData.filter((s: any) => s.enabled).length;
 
@@ -50,6 +92,9 @@ export default function Dashboard() {
           activeAgents: activeAgents,
           schedules: enabledSchedules,
         });
+
+        setAgentsList(agentsData);
+        setBriefingItems(activityData);
       } catch (err) {
         console.error('Failed to fetch dashboard stats:', err);
       } finally {
@@ -58,11 +103,40 @@ export default function Dashboard() {
     };
 
     fetchStats();
-    
+
     // Refresh every 30 seconds
     const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const getBriefingIcon = (type: string) => {
+    switch (type) {
+      case 'agent_completed':
+        return <CheckCircle size={16} className="text-cyber-green" />;
+      case 'agent_started':
+        return <Lightning size={16} className="text-cyber-yellow" />;
+      case 'task_created':
+      case 'task_updated':
+        return <FileText size={16} className="text-cyber-cyan" />;
+      case 'comment_added':
+        return <ChatCircle size={16} className="text-cyber-purple" />;
+      case 'status_changed':
+        return <TrendUp size={16} className="text-cyber-cyan" />;
+      default:
+        return <ArrowRight size={16} className="text-cyber-text-dim" />;
+    }
+  };
+
+  // Format date for the briefing header
+  const day = currentTime.getDate().toString().padStart(2, '0');
+  const month = currentTime.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+  const year = currentTime.getFullYear();
+  const timeStr = currentTime.toLocaleString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short'
+  });
 
   return (
     <div className="space-y-8">
@@ -82,64 +156,63 @@ export default function Dashboard() {
               TODAY'S INTELLIGENCE BRIEFING
             </h2>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-3">
-                <CheckCircle size={16} className="text-cyber-green" />
-                <span className="text-cyber-text-primary">
-                  ASOT Vietnam 2026: 72 tickets sold (Mar 9)
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Clock size={16} className="text-cyber-yellow" />
-                <span className="text-cyber-text-primary">
-                  Scout brief due: KI/KI artist analysis
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <TrendUp size={16} className="text-cyber-cyan" />
-                <span className="text-cyber-text-primary">
-                  Meta campaigns: 11.99x ROAS (top performer)
-                </span>
-              </div>
+              {briefingItems.length > 0 ? (
+                briefingItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3">
+                    {getBriefingIcon(item.type)}
+                    <span className="text-cyber-text-primary">
+                      {item.message}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-3">
+                  <CheckCircle size={16} className="text-cyber-green" />
+                  <span className="text-cyber-text-primary">
+                    All systems operational — no new activity
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-mono font-bold text-cyber-cyan">09</div>
-            <div className="text-sm text-cyber-text-dim uppercase tracking-wide">MAR 2026</div>
-            <div className="text-xs text-cyber-text-dim font-mono mt-1">04:30 UTC</div>
+            <div className="text-3xl font-mono font-bold text-cyber-cyan">{day}</div>
+            <div className="text-sm text-cyber-text-dim uppercase tracking-wide">{month} {year}</div>
+            <div className="text-xs text-cyber-text-dim font-mono mt-1">{timeStr}</div>
           </div>
         </div>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <MetricCard 
+        <MetricCard
           icon={<ChartLine size={28} />}
-          label="Active Projects" 
-          value={loading ? '-' : stats.projects.toString()} 
+          label="Active Projects"
+          value={loading ? '-' : stats.projects.toString()}
           sublabel="Mission folders"
           color="from-cyber-cyan to-blue-600"
           delay={2}
         />
-        <MetricCard 
+        <MetricCard
           icon={<Queue size={28} />}
-          label="Tasks in Queue" 
-          value={loading ? '-' : stats.tasksInQueue.toString()} 
+          label="Tasks in Queue"
+          value={loading ? '-' : stats.tasksInQueue.toString()}
           sublabel="Pending work items"
           color="from-cyber-purple to-purple-600"
           delay={3}
         />
-        <MetricCard 
+        <MetricCard
           icon={<Users size={28} />}
-          label="Agent Swarm" 
-          value={loading ? '-' : stats.activeAgents.toString()} 
+          label="Agent Swarm"
+          value={loading ? '-' : stats.activeAgents.toString()}
           sublabel="Online & ready"
           color="from-cyber-green to-green-600"
           delay={4}
         />
-        <MetricCard 
+        <MetricCard
           icon={<Calendar size={28} />}
-          label="Heartbeats" 
-          value={loading ? '-' : stats.schedules.toString()} 
+          label="Heartbeats"
+          value={loading ? '-' : stats.schedules.toString()}
           sublabel="Automated checks"
           color="from-cyber-yellow to-yellow-600"
           delay={5}
@@ -154,14 +227,27 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <AgentStatusCard name="SCOUT" status="online" progress={100} />
-            <AgentStatusCard name="PULSE" status="online" progress={100} />
-            <AgentStatusCard name="RADAR" status="online" progress={100} />
-            <AgentStatusCard name="META" status="online" progress={100} />
-            <AgentStatusCard name="AUDIT" status="online" progress={100} />
-            <AgentStatusCard name="TRENDS" status="online" progress={100} />
-            <AgentStatusCard name="BRAIN" status="online" progress={100} />
-            <AgentStatusCard name="BRAND" status="online" progress={100} />
+            {agentsList.length > 0 ? (
+              agentsList.map((agent) => (
+                <AgentStatusCard
+                  key={agent.id}
+                  name={agent.name.replace('livescape-', '').toUpperCase()}
+                  status={agent.isActive ? 'online' : 'offline'}
+                  progress={agent.isActive ? 100 : 0}
+                />
+              ))
+            ) : (
+              <>
+                <AgentStatusCard name="SCOUT" status="online" progress={100} />
+                <AgentStatusCard name="PULSE" status="online" progress={100} />
+                <AgentStatusCard name="RADAR" status="online" progress={100} />
+                <AgentStatusCard name="META" status="online" progress={100} />
+                <AgentStatusCard name="AUDIT" status="online" progress={100} />
+                <AgentStatusCard name="TRENDS" status="online" progress={100} />
+                <AgentStatusCard name="BRAIN" status="online" progress={100} />
+                <AgentStatusCard name="BRAND" status="online" progress={100} />
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -169,7 +255,7 @@ export default function Dashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="fade-in-up stagger-7">
-          <SubscriberGrowthChart 
+          <SubscriberGrowthChart
             data={[
               { date: 'Jan', subscribers: 25000, views: 8000000 },
               { date: 'Feb', subscribers: 26200, views: 8200000 },
@@ -199,10 +285,10 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ icon, label, value, sublabel, color, delay }: { 
-  icon: React.ReactNode; 
-  label: string; 
-  value: string; 
+function MetricCard({ icon, label, value, sublabel, color, delay }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
   sublabel?: string;
   color: string;
   delay: number;
@@ -231,8 +317,8 @@ function MetricCard({ icon, label, value, sublabel, color, delay }: {
   );
 }
 
-function AgentStatusCard({ name, status, progress }: { 
-  name: string; 
+function AgentStatusCard({ name, status, progress }: {
+  name: string;
   status: 'online' | 'busy' | 'offline';
   progress: number;
 }) {
@@ -256,8 +342,8 @@ function AgentStatusCard({ name, status, progress }: {
   );
 }
 
-function StatusRow({ label, status, uptime }: { 
-  label: string; 
+function StatusRow({ label, status, uptime }: {
+  label: string;
   status: 'online' | 'offline';
   uptime: string;
 }) {

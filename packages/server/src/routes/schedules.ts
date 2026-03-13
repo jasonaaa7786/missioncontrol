@@ -3,7 +3,7 @@ import type { CreateScheduleRequest, UpdateScheduleRequest } from '@mc/shared';
 
 const scheduleRoutes: FastifyPluginAsync = async (fastify) => {
   // List schedules
-  fastify.get('/  ', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.get('/', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { projectId } = request.query as { projectId?: string };
     
     const schedules = await fastify.prisma.schedule.findMany({
@@ -37,7 +37,7 @@ const scheduleRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Create schedule
-  fastify.post('/  ', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
+  fastify.post('/', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const body = request.body as CreateScheduleRequest;
 
     const schedule = await fastify.prisma.schedule.create({
