@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { readFile } from 'fs/promises';
+import { getCostSummary } from '../utils/token-parser.js';
 
 const execAsync = promisify(exec);
 
@@ -124,6 +125,119 @@ const systemRoutes: FastifyPluginAsync = async (fastify) => {
         error: 'Update failed: ' + error.message,
         stderr: error.stderr || '',
       });
+    }
+  });
+
+  // Get token usage & cost summary
+  fastify.get('/costs', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    try {
+      const summary = await getCostSummary(fastify.prisma);
+      return summary;
+    } catch (error) {
+      fastify.log.error(error, 'Failed to get cost summary');
+      reply.code(500).send({ error: 'Failed to get cost summary' });
+    }
+  });
+
+  // Get smart alerts
+  fastify.get('/alerts', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    try {
+      const alerts: Array<{
+        type: string;
+        severity: 'critical' | 'warning' | 'info';
+        message: string;
+        agentId?: string;
+        timestamp: string;
+      }> = [];
+
+      const now = new Date();
+      const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+      // Check daily cost
+      const costSummary = await getCostSummary(fastify.prisma);
+      if (costSummary.today > 50) {
+        alerts.push({
+          type: 'high_cost',
+          severity: 'critical',
+          message: `High daily spend: $${costSummary.today.toFixed(2)} today`,
+          timestamp: now.toISOString(),
+        });
+      } else if (costSummary.today > 20) {
+        alerts.push({
+          type: 'elevated_cost',
+          severity: 'warning',
+          message: `Elevated daily spend: $${costSummary.today.toFixed(2)} today`,
+          timestamp: now.toISOString(),
+        });
+      }
+
+      // Check for failed agents (started but not completed in 2h)
+      const recentStarts = await fastify.prisma.activity.findMany({
+        where: {
+          type: 'agent_started',
+          createdAt: { gte: twoHoursAgo },
+        },
+      });
+
+      const recentCompletions = await fastify.prisma.activity.findMany({
+        where: {
+          type: 'agent_completed',
+          createdAt: { gte: twoHoursAgo },
+        },
+      });
+
+      const completedAgentIds = new Set(recentCompletions.map(a => a.agentId));
+      for (const start of recentStarts) {
+        if (start.agentId && !completedAgentIds.has(start.agentId)) {
+          alerts.push({
+            type: 'agent_stuck',
+            severity: 'critical',
+            message: `Agent ${start.agentId.replace('livescape-', '').toUpperCase()} started but hasn't completed in 2+ hours`,
+            agentId: start.agentId,
+            timestamp: start.createdAt.toISOString(),
+          });
+        }
+      }
+
+      // Check for stale heartbeats (no activity in 1h for active agents)
+      const activeAgents = await fastify.prisma.agent.findMany({
+        where: { isActive: true },
+      });
+
+      for (const agent of activeAgents) {
+        const lastActivity = await fastify.prisma.activity.findFirst({
+          where: { agentId: agent.id },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (lastActivity && lastActivity.createdAt < oneHourAgo) {
+          alerts.push({
+            type: 'stale_heartbeat',
+            severity: 'warning',
+            message: `No activity from ${agent.name.replace('livescape-', '').toUpperCase()} in over 1 hour`,
+            agentId: agent.id,
+            timestamp: lastActivity.createdAt.toISOString(),
+          });
+        }
+      }
+
+      // Check for failed schedules
+      const failedSchedules = await fastify.prisma.schedule.findMany({
+        where: {
+          enabled: true,
+          lastRunAt: { not: null },
+        },
+      });
+
+      // Sort by severity
+      const severityOrder = { critical: 0, warning: 1, info: 2 };
+      alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+      return alerts;
+    } catch (error) {
+      fastify.log.error(error, 'Failed to get alerts');
+      reply.code(500).send({ error: 'Failed to get alerts' });
     }
   });
 

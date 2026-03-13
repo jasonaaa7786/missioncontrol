@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react';
-import { projects, agents, schedules, tasksV2, activity as activityAPI } from '../lib/api';
+import { projects, agents, schedules, tasksV2, activity as activityAPI, system } from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import SubscriberGrowthChart from '../components/charts/SubscriberGrowthChart';
+import CostTrendChart from '../components/charts/CostTrendChart';
+// SubscriberGrowthChart removed — replaced by CostTrendChart
 import {
   ChartLine,
   TrendUp,
   Users,
   Calendar,
   CheckCircle,
-  Clock,
   Queue,
-  Warning,
   Lightning,
-  Robot,
   FileText,
   ChatCircle,
   ArrowRight,
-  WarningCircle
+  WarningCircle,
+  CurrencyDollar,
+  Coin,
+  ChartBar,
+  ShieldWarning
 } from '@phosphor-icons/react';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -46,6 +48,24 @@ export default function Dashboard() {
   });
   const [agentsList, setAgentsList] = useState<Agent[]>([]);
   const [briefingItems, setBriefingItems] = useState<BriefingItem[]>([]);
+  const [costData, setCostData] = useState<{
+    today: number;
+    sevenDay: number;
+    thirtyDay: number;
+    allTime: number;
+    projected: number;
+    totalTokens: number;
+    byModel: { model: string; tokens: number; cost: number; calls: number }[];
+    byAgent: { agent: string; tokens: number; cost: number; calls: number }[];
+    dailyTrend: { date: string; cost: number; tokens: number }[];
+  } | null>(null);
+  const [alerts, setAlerts] = useState<Array<{
+    type: string;
+    severity: 'critical' | 'warning' | 'info';
+    message: string;
+    agentId?: string;
+    timestamp: string;
+  }>>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,9 +86,11 @@ export default function Dashboard() {
           schedules.list(),
           tasksV2.list(),
           activityAPI.feed({ limit: 3 }),
+          system.costs(),
+          system.alerts(),
         ]);
 
-        const [projectsResult, agentsResult, schedulesResult, tasksResult, activityResult] = results;
+        const [projectsResult, agentsResult, schedulesResult, tasksResult, activityResult, costsResult, alertsResult] = results;
 
         // Extract data safely from settled promises
         const projectsData = projectsResult.status === 'fulfilled' ? projectsResult.value : [];
@@ -76,6 +98,8 @@ export default function Dashboard() {
         const schedulesData = schedulesResult.status === 'fulfilled' ? schedulesResult.value : [];
         const tasksData = tasksResult.status === 'fulfilled' ? tasksResult.value : [];
         const activityData = activityResult.status === 'fulfilled' ? activityResult.value : [];
+        const costsDataResult = costsResult.status === 'fulfilled' ? costsResult.value : null;
+        const alertsDataResult = alertsResult.status === 'fulfilled' ? alertsResult.value : [];
 
         // Count active projects (status = 'active')
         const activeProjects = projectsData.filter((p: any) => p.status === 'active').length;
@@ -98,6 +122,8 @@ export default function Dashboard() {
 
         setAgentsList(agentsData);
         setBriefingItems(activityData);
+        if (costsDataResult) setCostData(costsDataResult);
+        setAlerts(alertsDataResult);
       } catch (err) {
         console.error('Failed to fetch dashboard stats:', err);
         setError('Failed to load dashboard data. Retrying...');
@@ -309,32 +335,175 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Charts */}
+      {/* Alerts Banner */}
+      {alerts.length > 0 && (
+        <div className="space-y-2 fade-in-up stagger-6">
+          {alerts.map((alert, idx) => (
+            <div
+              key={idx}
+              className={`cyber-card p-3 flex items-center gap-3 border-l-4 ${
+                alert.severity === 'critical'
+                  ? 'border-l-cyber-red bg-cyber-red/5'
+                  : alert.severity === 'warning'
+                  ? 'border-l-cyber-yellow bg-cyber-yellow/5'
+                  : 'border-l-cyber-cyan bg-cyber-cyan/5'
+              }`}
+            >
+              <ShieldWarning
+                size={18}
+                weight="fill"
+                className={
+                  alert.severity === 'critical'
+                    ? 'text-cyber-red'
+                    : alert.severity === 'warning'
+                    ? 'text-cyber-yellow'
+                    : 'text-cyber-cyan'
+                }
+              />
+              <span className="text-sm text-cyber-text-primary flex-1">{alert.message}</span>
+              <span className="text-[10px] text-cyber-text-dim font-mono uppercase">
+                {alert.severity}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cost Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 fade-in-up stagger-7">
+        <CostCard
+          label="Today's Spend"
+          value={costData ? `$${costData.today.toFixed(2)}` : '-'}
+          icon={<CurrencyDollar size={24} />}
+          loading={loading}
+        />
+        <CostCard
+          label="7-Day Spend"
+          value={costData ? `$${costData.sevenDay.toFixed(2)}` : '-'}
+          icon={<ChartBar size={24} />}
+          loading={loading}
+        />
+        <CostCard
+          label="All-Time Spend"
+          value={costData ? `$${costData.allTime.toFixed(2)}` : '-'}
+          icon={<Coin size={24} />}
+          loading={loading}
+        />
+        <CostCard
+          label="Projected / Mo"
+          value={costData ? `$${costData.projected.toFixed(2)}` : '-'}
+          icon={<TrendUp size={24} />}
+          loading={loading}
+          sublabel={costData ? `${costData.totalTokens.toLocaleString()} total tokens` : undefined}
+        />
+      </div>
+
+      {/* Cost Chart + Model Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="fade-in-up stagger-7">
-          <SubscriberGrowthChart
-            data={[
-              { date: 'Jan', subscribers: 25000, views: 8000000 },
-              { date: 'Feb', subscribers: 26200, views: 8200000 },
-              { date: 'Mar', subscribers: 27700, views: 8495436 },
-            ]}
-            title="Artist Growth (KI/KI)"
-            description="YouTube metrics over time"
-          />
+        <div className="fade-in-up stagger-8">
+          {loading || !costData ? (
+            <Card className="cyber-card">
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-4 w-48 mt-1" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-[260px] w-full" />
+              </CardContent>
+            </Card>
+          ) : (
+            <CostTrendChart
+              data={costData.dailyTrend}
+              title="Cost Trend (7 Days)"
+              description="Daily API spend"
+            />
+          )}
         </div>
 
         <Card className="cyber-card fade-in-up stagger-8">
           <CardHeader>
-            <CardTitle className="font-heading text-xl">System Status</CardTitle>
-            <CardDescription>All systems operational</CardDescription>
+            <CardTitle className="font-heading text-xl">Spend Breakdown</CardTitle>
+            <CardDescription>By model & agent</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <StatusRow label="Mission Control" status="online" uptime="99.8%" />
-              <StatusRow label="YouTube API" status="online" uptime="100%" />
-              <StatusRow label="Data Pipeline" status="online" uptime="98.2%" />
-              <StatusRow label="Agent Swarm" status="online" uptime="99.9%" />
-            </div>
+            {loading || !costData ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* By Model */}
+                {costData.byModel.length > 0 && (
+                  <div>
+                    <h4 className="text-xs text-cyber-text-dim uppercase tracking-wider mb-2 font-heading">By Model</h4>
+                    <div className="space-y-2">
+                      {costData.byModel.slice(0, 4).map((m) => (
+                        <div key={m.model} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-cyber-cyan" />
+                            <span className="text-cyber-text-primary font-mono text-xs">
+                              {m.model.replace('claude-', '').replace('-20250514', '')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-cyber-text-dim text-xs font-mono">
+                              {m.tokens.toLocaleString()} tok
+                            </span>
+                            <span className="text-cyber-cyan font-mono font-bold text-xs">
+                              ${m.cost.toFixed(4)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Divider */}
+                {costData.byModel.length > 0 && costData.byAgent.length > 0 && (
+                  <div className="border-t border-cyber-border" />
+                )}
+
+                {/* By Agent */}
+                {costData.byAgent.length > 0 && (
+                  <div>
+                    <h4 className="text-xs text-cyber-text-dim uppercase tracking-wider mb-2 font-heading">By Agent</h4>
+                    <div className="space-y-2">
+                      {costData.byAgent.slice(0, 6).map((a) => (
+                        <div key={a.agent} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="cyber-badge cyber-badge-info text-[9px] px-1.5 py-0.5">
+                              {a.agent}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-cyber-text-dim text-xs font-mono">
+                              {a.calls} runs
+                            </span>
+                            <span className="text-cyber-green font-mono font-bold text-xs">
+                              ${a.cost.toFixed(4)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {costData.byModel.length === 0 && costData.byAgent.length === 0 && (
+                  <div className="text-center py-8">
+                    <CurrencyDollar size={32} className="text-cyber-text-dim mx-auto mb-2" />
+                    <p className="text-sm text-cyber-text-dim">No usage data yet</p>
+                    <p className="text-xs text-cyber-text-dim mt-1">
+                      Agent activity will appear here once agents run
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -399,23 +568,29 @@ function AgentStatusCard({ name, status, progress }: {
   );
 }
 
-function StatusRow({ label, status, uptime }: {
+function CostCard({ label, value, icon, loading, sublabel }: {
   label: string;
-  status: 'online' | 'offline';
-  uptime: string;
+  value: string;
+  icon: React.ReactNode;
+  loading: boolean;
+  sublabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-between py-2">
-      <div className="flex items-center gap-3">
-        <div className={`w-2 h-2 rounded-full ${status === 'online' ? 'bg-cyber-green animate-pulse' : 'bg-cyber-red'}`} />
-        <span className="text-cyber-text-primary font-medium">{label}</span>
+    <div className="cyber-card p-4">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="text-cyber-cyan opacity-60">{icon}</div>
+        <span className="text-xs text-cyber-text-dim uppercase tracking-wider font-heading">{label}</span>
       </div>
-      <div className="flex items-center gap-4">
-        <span className="text-xs text-cyber-text-dim font-mono">Uptime: {uptime}</span>
-        <span className={`text-sm font-mono ${status === 'online' ? 'text-cyber-green' : 'text-cyber-red'}`}>
-          {status.toUpperCase()}
-        </span>
-      </div>
+      {loading ? (
+        <Skeleton className="h-8 w-24" />
+      ) : (
+        <>
+          <div className="text-2xl font-mono font-bold text-cyber-cyan">{value}</div>
+          {sublabel && (
+            <p className="text-[10px] text-cyber-text-dim font-mono mt-1">{sublabel}</p>
+          )}
+        </>
+      )}
     </div>
   );
 }

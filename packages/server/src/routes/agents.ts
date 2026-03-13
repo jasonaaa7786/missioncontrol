@@ -68,12 +68,87 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // List agents (requires authentication)
+  // List agents with enriched activity stats
   fastify.get('/', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const agents = await fastify.prisma.agent.findMany({
       orderBy: { name: 'asc' },
     });
-    return agents;
+
+    // Enrich each agent with activity stats
+    const enriched = await Promise.all(agents.map(async (agent) => {
+      try {
+        // Get last activity
+        const lastActivity = await fastify.prisma.activity.findFirst({
+          where: { agentId: agent.id },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        // Count runs
+        const [startCount, completeCount] = await Promise.all([
+          fastify.prisma.activity.count({
+            where: { agentId: agent.id, type: 'agent_started' },
+          }),
+          fastify.prisma.activity.count({
+            where: { agentId: agent.id, type: 'agent_completed' },
+          }),
+        ]);
+
+        // Get total tokens/cost from metadata
+        const completedActivities = await fastify.prisma.activity.findMany({
+          where: { agentId: agent.id, type: 'agent_completed' },
+          select: { metadata: true },
+        });
+
+        let totalTokens = 0;
+        let totalCost = 0;
+        for (const a of completedActivities) {
+          try {
+            const meta = JSON.parse(a.metadata || '{}');
+            totalTokens += meta.tokens || 0;
+            totalCost += meta.cost || 0;
+          } catch { /* skip */ }
+        }
+
+        return {
+          ...agent,
+          lastActiveAt: lastActivity?.createdAt || null,
+          runCount: startCount,
+          completedCount: completeCount,
+          successRate: startCount > 0 ? Math.round((completeCount / startCount) * 100) : 0,
+          totalTokens,
+          totalCost: Math.round(totalCost * 10000) / 10000,
+        };
+      } catch {
+        return {
+          ...agent,
+          lastActiveAt: null,
+          runCount: 0,
+          completedCount: 0,
+          successRate: 0,
+          totalTokens: 0,
+          totalCost: 0,
+        };
+      }
+    }));
+
+    return enriched;
+  });
+
+  // Get agent activity history
+  fastify.get('/:id/activity', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { limit = '20' } = request.query as { limit?: string };
+
+    const activities = await fastify.prisma.activity.findMany({
+      where: { agentId: id },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+    });
+
+    return activities.map(a => ({
+      ...a,
+      metadata: a.metadata ? JSON.parse(a.metadata) : {},
+    }));
   });
 
   // Get agent by ID (requires authentication)

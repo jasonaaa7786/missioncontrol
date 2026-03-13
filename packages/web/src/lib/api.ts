@@ -293,6 +293,26 @@ export const system = {
   }>('/api/system/restart-gateway', {
     method: 'POST',
   }),
+
+  costs: () => fetchAPI<{
+    today: number;
+    sevenDay: number;
+    thirtyDay: number;
+    allTime: number;
+    projected: number;
+    totalTokens: number;
+    byModel: { model: string; tokens: number; cost: number; calls: number }[];
+    byAgent: { agent: string; tokens: number; cost: number; calls: number }[];
+    dailyTrend: { date: string; cost: number; tokens: number }[];
+  }>('/api/system/costs'),
+
+  alerts: () => fetchAPI<Array<{
+    type: string;
+    severity: 'critical' | 'warning' | 'info';
+    message: string;
+    agentId?: string;
+    timestamp: string;
+  }>>('/api/system/alerts'),
 };
 
 // Uploads API
