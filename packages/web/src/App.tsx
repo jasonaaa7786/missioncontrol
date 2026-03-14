@@ -15,6 +15,7 @@ import ArtistResearch from './pages/ArtistResearch';
 import VenueSearch from './pages/VenueSearch';
 import DatabaseSearch from './pages/DatabaseSearch';
 import Pipeline from './pages/Pipeline';
+import Reports from './pages/Reports';
 import { Toaster } from './components/ui/sonner';
 import './styles/cyberpunk.css';
 
@@ -45,6 +46,7 @@ function App() {
             <Route path="scheduler" element={<Scheduler />} />
             <Route path="documents" element={<Documents />} />
             <Route path="chat" element={<Chat />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

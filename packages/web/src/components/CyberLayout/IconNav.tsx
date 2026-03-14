@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  ChartLine, 
-  MagnifyingGlass, 
-  FolderOpen, 
-  Robot, 
-  CalendarBlank, 
-  ChatCircle, 
+import {
+  ChartLine,
+  ChartBar,
+  MagnifyingGlass,
+  FolderOpen,
+  Robot,
+  CalendarBlank,
+  ChatCircle,
   Gear,
   FlowArrow,
   MapTrifold,
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { to: '/pipeline', icon: <FlowArrow size={24} />, label: 'Pipeline' },
   { to: '/scheduler', icon: <CalendarBlank size={24} />, label: 'Scheduler' },
   { to: '/chat', icon: <ChatCircle size={24} />, label: 'Chat' },
+  { to: '/reports', icon: <ChartBar size={24} />, label: 'Reports' },
   { to: '/settings', icon: <Gear size={24} />, label: 'Settings' },
 ];
 
