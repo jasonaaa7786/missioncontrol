@@ -2,6 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import * as api from '../lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  PaperPlaneRight,
+  Plus,
+  Robot,
+  User,
+  Spinner,
+  TrashSimple,
+  ChatCircle,
+  CaretLeft,
+  WarningCircle,
+} from '@phosphor-icons/react';
 
 interface Message {
   id: string;
@@ -10,12 +21,24 @@ interface Message {
   timestamp: string;
 }
 
+const AGENTS = [
+  { id: 'ls-commander', name: 'HEYMACHA', desc: 'Mission commander' },
+  { id: 'livescape-scout', name: 'SCOUT', desc: 'Artist research' },
+  { id: 'livescape-pulse', name: 'PULSE', desc: 'Social analytics' },
+  { id: 'livescape-radar', name: 'RADAR', desc: 'Trend detection' },
+  { id: 'livescape-meta', name: 'META', desc: 'Metadata ops' },
+  { id: 'livescape-brain', name: 'BRAIN', desc: 'Strategy engine' },
+];
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState(AGENTS[0]);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,20 +49,17 @@ export default function Chat() {
   }, [messages]);
 
   useEffect(() => {
-    // Create new session on mount
     createSession();
   }, []);
 
   const createSession = async () => {
     try {
       const data = await api.chat.createSession();
-      setSessionId(data.sessionId);
-    } catch (err: any) {
+      setSessionId(data.id || data.sessionId);
+    } catch (err) {
       console.error('Failed to create chat session:', err);
     }
   };
-
-
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +68,6 @@ export default function Chat() {
     const userMessage = input.trim();
     setInput('');
 
-    // Add user message immediately
     const tempUserMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -60,8 +79,7 @@ export default function Chat() {
     try {
       setLoading(true);
       const response = await api.chat.sendMessage(sessionId, userMessage);
-      
-      // Add assistant response
+
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -70,7 +88,6 @@ export default function Chat() {
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
-      // Show error message
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'system',
@@ -80,6 +97,7 @@ export default function Chat() {
       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -89,31 +107,93 @@ export default function Chat() {
     createSession();
   };
 
+  const handleClearChat = () => {
+    if (messages.length === 0) return;
+    setMessages([]);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-900">
+    <div className="flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Chat with HEYMACHA</h1>
-          <p className="text-sm text-gray-400 mt-1">Direct communication with Mission Control</p>
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-cyber-border bg-cyber-bg-secondary/50 rounded-t-lg">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/30 flex items-center justify-center">
+              <Robot size={20} className="text-cyber-cyan" />
+            </div>
+            <div>
+              <h1 className="font-heading text-lg font-bold text-cyber-text-primary">
+                {selectedAgent.name}
+              </h1>
+              <p className="text-[10px] text-cyber-text-dim font-mono">{selectedAgent.desc}</p>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={handleNewSession}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          New Session
-        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Agent Picker */}
+          <select
+            value={selectedAgent.id}
+            onChange={(e) => {
+              const agent = AGENTS.find(a => a.id === e.target.value);
+              if (agent) setSelectedAgent(agent);
+            }}
+            className="px-3 py-1.5 bg-cyber-bg-tertiary border border-cyber-border rounded text-xs text-cyber-text-primary font-mono focus:outline-none focus:border-cyber-cyan hidden sm:block"
+          >
+            {AGENTS.map(a => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={handleClearChat}
+            className="p-2 text-cyber-text-dim hover:text-cyber-red transition-colors"
+            title="Clear chat"
+          >
+            <TrashSimple size={16} />
+          </button>
+
+          <button
+            onClick={handleNewSession}
+            className="cyber-btn px-3 py-1.5 text-xs font-heading uppercase tracking-wide"
+          >
+            <Plus size={14} className="mr-1 inline" />
+            New
+          </button>
+        </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-cyber-bg-primary/30">
         {messages.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🤖</div>
-            <h2 className="text-xl font-semibold text-white mb-2">HEYMACHA Mission Control</h2>
-            <p className="text-gray-400">
-              Ask me about projects, tasks, agents, or anything else.
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-full bg-cyber-cyan/5 border border-cyber-cyan/20 flex items-center justify-center mx-auto mb-6">
+              <Robot size={40} className="text-cyber-cyan/50" />
+            </div>
+            <h2 className="font-heading text-xl font-bold text-cyber-text-primary mb-2">
+              {selectedAgent.name} READY
+            </h2>
+            <p className="text-sm text-cyber-text-dim max-w-md mx-auto">
+              Ask about projects, tasks, agents, or anything related to your missions.
             </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {[
+                'What tasks are in the queue?',
+                'Show project status',
+                'Which agents are active?',
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => {
+                    setInput(suggestion);
+                    inputRef.current?.focus();
+                  }}
+                  className="px-3 py-1.5 text-xs text-cyber-text-secondary bg-cyber-bg-tertiary border border-cyber-border rounded-full hover:border-cyber-cyan hover:text-cyber-cyan transition-colors"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -123,18 +203,26 @@ export default function Chat() {
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-3xl px-4 py-3 rounded-lg ${
+              className={`max-w-[85%] sm:max-w-2xl px-4 py-3 rounded-lg ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-cyber-cyan/15 border border-cyber-cyan/30 text-cyber-text-primary'
                   : msg.role === 'system'
-                  ? 'bg-red-900/20 border border-red-700 text-red-400'
-                  : 'bg-gray-800 text-gray-100 border border-gray-700'
+                  ? 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red'
+                  : 'cyber-card text-cyber-text-primary'
               }`}
             >
               <div className="flex items-start gap-3">
-                {msg.role !== 'user' && (
-                  <div className="text-2xl flex-shrink-0">
-                    {msg.role === 'system' ? '⚠️' : '🤖'}
+                {msg.role === 'user' ? (
+                  <div className="w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <User size={12} className="text-cyber-cyan" />
+                  </div>
+                ) : msg.role === 'assistant' ? (
+                  <div className="w-6 h-6 rounded-full bg-cyber-bg-tertiary border border-cyber-border flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Robot size={12} className="text-cyber-cyan" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-cyber-red/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <WarningCircle size={12} className="text-cyber-red" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -143,19 +231,19 @@ export default function Chat() {
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          p: ({ children }) => <p className="mb-2 last:mb-0 text-cyber-text-primary">{children}</p>,
                           a: ({ href, children }) => (
-                            <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                            <a href={href} className="text-cyber-cyan hover:underline" target="_blank" rel="noopener noreferrer">
                               {children}
                             </a>
                           ),
                           code: ({ inline, children }: any) =>
                             inline ? (
-                              <code className="bg-gray-900 px-1 py-0.5 rounded text-blue-300">
+                              <code className="bg-cyber-bg-tertiary px-1.5 py-0.5 rounded text-cyber-cyan font-mono text-xs">
                                 {children}
                               </code>
                             ) : (
-                              <code className="block bg-gray-900 p-3 rounded overflow-x-auto text-sm">
+                              <code className="block bg-cyber-bg-tertiary border border-cyber-border p-3 rounded font-mono text-xs overflow-x-auto">
                                 {children}
                               </code>
                             ),
@@ -165,9 +253,9 @@ export default function Chat() {
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                   )}
-                  <p className="text-xs opacity-60 mt-2">
+                  <p className="text-[10px] text-cyber-text-dim font-mono mt-2">
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
@@ -178,13 +266,14 @@ export default function Chat() {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-800 px-4 py-3 rounded-lg border border-gray-700">
+            <div className="cyber-card px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="text-2xl">🤖</div>
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-6 h-6 rounded-full bg-cyber-bg-tertiary border border-cyber-border flex items-center justify-center">
+                  <Robot size={12} className="text-cyber-cyan" />
+                </div>
+                <div className="flex items-center gap-2 text-xs text-cyber-text-dim">
+                  <Spinner size={14} className="text-cyber-cyan animate-spin" />
+                  <span className="font-mono">{selectedAgent.name} is thinking...</span>
                 </div>
               </div>
             </div>
@@ -194,25 +283,29 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-gray-700 bg-gray-800 p-4">
+      {/* Input Area */}
+      <div className="border-t border-cyber-border bg-cyber-bg-secondary/50 p-4 rounded-b-lg">
         <form onSubmit={handleSend} className="flex gap-3">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={`Message ${selectedAgent.name}...`}
             disabled={loading || !sessionId}
-            className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-sm text-cyber-text-primary font-body placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan transition-colors disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={loading || !input.trim() || !sessionId}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cyber-btn px-4 py-3 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
           >
-            Send
+            <PaperPlaneRight size={18} weight="fill" />
           </button>
         </form>
+        <p className="text-[9px] text-cyber-text-dim font-mono mt-2 text-center">
+          Connected to {selectedAgent.id} • Session {sessionId?.slice(0, 8) || '...'}
+        </p>
       </div>
     </div>
   );
