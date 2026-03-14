@@ -235,9 +235,9 @@ export default function Agents() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between fade-in-up">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 fade-in-up">
         <div>
-          <h1 className="cyber-heading text-4xl font-bold mb-2">AI AGENT SWARM</h1>
+          <h1 className="cyber-heading text-2xl sm:text-4xl font-bold mb-2">AI AGENT SWARM</h1>
           <p className="text-cyber-text-secondary font-body">
             Manage HEYMACHA, Livescape agents, and custom subagents
           </p>

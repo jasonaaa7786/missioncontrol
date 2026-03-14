@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
   { to: '/settings', icon: <Gear size={24} />, label: 'Settings' },
 ];
 
-export default function IconNav() {
+export default function IconNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   return (
     <nav className="fixed left-0 top-0 h-screen w-[62px] bg-cyber-bg-secondary border-r border-cyber-border flex flex-col items-center py-6 z-50">
       {/* Logo */}
@@ -51,6 +51,7 @@ export default function IconNav() {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={() => onNavigate?.()}
             className={({ isActive }) =>
               `group relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 ${
                 isActive

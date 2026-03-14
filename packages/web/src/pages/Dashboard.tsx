@@ -242,7 +242,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Header */}
       <div className="fade-in-up">
-        <h1 className="cyber-heading text-5xl font-bold mb-3">LIVESCAPE MISSION CONTROL</h1>
+        <h1 className="cyber-heading text-3xl sm:text-4xl lg:text-5xl font-bold mb-3">LIVESCAPE MISSION CONTROL</h1>
         <p className="text-cyber-text-secondary text-lg font-body">
           Intelligence & Operations Hub
         </p>
@@ -298,7 +298,7 @@ export default function Dashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard
           icon={<ChartLine size={28} />}
           label="Active Projects"
@@ -412,7 +412,7 @@ export default function Dashboard() {
       )}
 
       {/* Cost Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 fade-in-up stagger-7">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 fade-in-up stagger-7">
         <CostCard
           label="Today's Spend"
           value={costData ? `$${costData.today.toFixed(2)}` : '-'}

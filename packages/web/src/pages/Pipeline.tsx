@@ -206,9 +206,9 @@ export default function Pipeline() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between fade-in-up">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 fade-in-up">
         <div>
-          <h1 className="cyber-heading text-4xl font-bold mb-2">Mission Queue</h1>
+          <h1 className="cyber-heading text-2xl sm:text-4xl font-bold mb-2">Mission Queue</h1>
           <p className="text-cyber-text-secondary font-body">
             Task workflow — {tasks.length} total tasks
           </p>
@@ -233,7 +233,7 @@ export default function Pipeline() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex items-center gap-4 fade-in-up stagger-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 fade-in-up stagger-1">
         <div className="relative flex-1">
           <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyber-text-dim" />
           <input
@@ -274,7 +274,7 @@ export default function Pipeline() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-7 gap-4 fade-in-up stagger-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3 lg:gap-4 fade-in-up stagger-2">
         {STATUSES.map((status) => {
           const count = getTasksByStatus(status.key).length;
           return (
@@ -303,7 +303,9 @@ export default function Pipeline() {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="grid grid-cols-7 gap-4">
+          <div className="flex lg:grid lg:grid-cols-7 gap-4 overflow-x-auto pb-4 snap-x snap-mandatory lg:snap-none lg:overflow-visible"
+            style={{ scrollbarWidth: 'thin' }}
+          >
             {STATUSES.map((status, statusIndex) => (
               <DroppableColumn
                 key={status.key}
@@ -452,7 +454,7 @@ function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`fade-in-up stagger-${statusIndex + 2} transition-all rounded-lg ${
+      className={`fade-in-up stagger-${statusIndex + 2} transition-all rounded-lg min-w-[220px] lg:min-w-0 snap-start ${
         isOver
           ? 'ring-2 ring-cyber-cyan/50 bg-cyber-cyan/5'
           : isActive
