@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { readFile } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
+import { wsBroadcast } from '../utils/ws-broadcast.js';
 
 const agentRoutes: FastifyPluginAsync = async (fastify) => {
   // Sync agents from OpenClaw config (admin only)
@@ -186,6 +187,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
       },
     });
 
+    wsBroadcast.broadcast('agent_updated', { agent: updated });
+
     return updated;
   });
 
@@ -206,6 +209,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
       where: { id },
       data: { isActive: !agent.isActive },
     });
+
+    wsBroadcast.broadcast('agent_toggled', { agent: updated });
 
     return updated;
   });

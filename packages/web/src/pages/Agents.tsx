@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAgents } from '../hooks/useAgents';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { useAuth } from '../contexts/AuthContext';
 import DeployAgentModal from '../components/DeployAgentModal';
 import * as api from '../lib/api';
@@ -47,7 +48,7 @@ interface EnrichedAgent {
 }
 
 export default function Agents() {
-  const { agents: allAgents, loading, error, syncAgents, toggleAgent } = useAgents();
+  const { agents: allAgents, loading, error, syncAgents, toggleAgent, refetch: refetchAgents } = useAgents();
   const { isAdmin } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
@@ -95,6 +96,19 @@ export default function Agents() {
     loadSubagents();
     loadProjects();
   }, []);
+
+  // Live updates via WebSocket
+  const wsReload = useCallback(() => {
+    refetchAgents();
+    loadSubagents();
+  }, [refetchAgents]);
+
+  useWebSocket({
+    onEvent: {
+      agent_updated: wsReload,
+      agent_toggled: wsReload,
+    },
+  });
 
   const loadSubagents = async () => {
     try {
@@ -614,13 +628,8 @@ export default function Agents() {
           onClose={() => setEditingAgent(null)}
           onSave={async () => {
             setEditingAgent(null);
-            // Reload both core agents and subagents
-            if (editingAgent.isSubagent) {
-              await loadSubagents();
-            }
-            // Core agents come from useAgents hook — trigger a re-fetch
-            await syncAgents().catch(() => {});
-            window.location.reload();
+            await loadSubagents();
+            await refetchAgents();
           }}
         />
       )}

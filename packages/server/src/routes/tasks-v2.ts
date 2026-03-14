@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
+import { wsBroadcast } from '../utils/ws-broadcast.js';
 
 const tasksV2Routes: FastifyPluginAsync = async (fastify) => {
   // Get all tasks (with filtering)
@@ -102,7 +103,9 @@ const tasksV2Routes: FastifyPluginAsync = async (fastify) => {
           metadata: JSON.stringify({ priority, status })
         }
       });
-      
+
+      wsBroadcast.broadcast('task_created', { task });
+
       return task;
     } catch (error) {
       fastify.log.error(error, 'Failed to create task');
@@ -144,7 +147,9 @@ const tasksV2Routes: FastifyPluginAsync = async (fastify) => {
           metadata: JSON.stringify({ oldStatus: null, newStatus: status })
         }
       });
-      
+
+      wsBroadcast.broadcast('task_status_changed', { task, newStatus: status });
+
       return task;
     } catch (error) {
       fastify.log.error(error, 'Failed to update task status');
@@ -182,7 +187,9 @@ const tasksV2Routes: FastifyPluginAsync = async (fastify) => {
           metadata: JSON.stringify({ updates })
         }
       });
-      
+
+      wsBroadcast.broadcast('task_updated', { task });
+
       return task;
     } catch (error) {
       fastify.log.error(error, 'Failed to update task');
@@ -198,7 +205,9 @@ const tasksV2Routes: FastifyPluginAsync = async (fastify) => {
       await fastify.prisma.task.delete({
         where: { id }
       });
-      
+
+      wsBroadcast.broadcast('task_deleted', { taskId: id });
+
       return { success: true };
     } catch (error) {
       fastify.log.error(error, 'Failed to delete task');

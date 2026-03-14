@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { projects, agents, schedules, tasksV2, activity as activityAPI, system } from '../lib/api';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import CostTrendChart from '../components/charts/CostTrendChart';
 // SubscriberGrowthChart removed — replaced by CostTrendChart
@@ -134,10 +135,51 @@ export default function Dashboard() {
 
     fetchStats();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+    // Refresh every 60 seconds (WebSocket handles live updates)
+    const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Real-time updates via WebSocket
+  const reloadDashboard = useCallback(() => {
+    // Debounce: ignore if already loading
+    const fetchQuiet = async () => {
+      try {
+        const results = await Promise.allSettled([
+          projects.list(),
+          agents.list(),
+          tasksV2.list(),
+          activityAPI.feed({ limit: 3 }),
+          system.alerts(),
+        ]);
+        const [pr, ag, tk, ac, al] = results;
+        const p = pr.status === 'fulfilled' ? pr.value : [];
+        const a = ag.status === 'fulfilled' ? ag.value : [];
+        const t = tk.status === 'fulfilled' ? tk.value : [];
+        setStats({
+          projects: p.filter((x: any) => x.status === 'active').length,
+          tasksInQueue: t.filter((x: any) => x.status !== 'done').length,
+          activeAgents: a.filter((x: any) => x.isActive).length,
+          schedules: stats.schedules,
+        });
+        setAgentsList(a);
+        if (ac.status === 'fulfilled') setBriefingItems(ac.value);
+        if (al.status === 'fulfilled') setAlerts(al.value);
+      } catch {}
+    };
+    fetchQuiet();
+  }, [stats.schedules]);
+
+  useWebSocket({
+    onEvent: {
+      task_created: reloadDashboard,
+      task_status_changed: reloadDashboard,
+      task_updated: reloadDashboard,
+      task_deleted: reloadDashboard,
+      agent_updated: reloadDashboard,
+      agent_toggled: reloadDashboard,
+    },
+  });
 
   const getBriefingIcon = (type: string) => {
     switch (type) {

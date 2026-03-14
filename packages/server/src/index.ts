@@ -17,6 +17,7 @@ import uploadsRoutes from './routes/uploads.js';
 import youtubeRoutes from './routes/youtube.js';
 import tasksV2Routes from './routes/tasks-v2.js';
 import activityRoutes from './routes/activity.js';
+import { wsBroadcast } from './utils/ws-broadcast.js';
 
 const prisma = new PrismaClient();
 const fastify = Fastify({
@@ -80,22 +81,34 @@ await fastify.register(youtubeRoutes, { prefix: '/api/youtube' });
 await fastify.register(tasksV2Routes, { prefix: '/api/tasks-v2' });
 await fastify.register(activityRoutes, { prefix: '/api/activity' });
 
+// Attach broadcast to fastify for route access
+fastify.decorate('broadcast', wsBroadcast);
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    broadcast: typeof wsBroadcast;
+  }
+}
+
 // WebSocket endpoint
 fastify.get('/ws', { websocket: true }, (socket, req) => {
+  wsBroadcast.addClient(socket);
+  fastify.log.info({ clients: wsBroadcast.clientCount }, 'WebSocket client connected');
+
   socket.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString());
-      fastify.log.info({ data }, 'WebSocket message received');
-      
-      // Echo for now (will implement proper event handling)
-      socket.send(JSON.stringify({ event: 'pong', data }));
+      // Handle ping/pong for keepalive
+      if (data.event === 'ping') {
+        socket.send(JSON.stringify({ event: 'pong', timestamp: new Date().toISOString() }));
+      }
     } catch (err) {
       fastify.log.error(err, 'WebSocket message parse error');
     }
   });
 
   socket.on('close', () => {
-    fastify.log.info('WebSocket client disconnected');
+    fastify.log.info({ clients: wsBroadcast.clientCount }, 'WebSocket client disconnected');
   });
 });
 

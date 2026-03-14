@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Plus, X, User, MagnifyingGlass, Funnel, CheckSquare, Square, ArrowsOutCardinal } from '@phosphor-icons/react';
 import { tasksV2, projects as projectsAPI } from '../lib/api';
 import { toast } from 'sonner';
 import TaskDetailModal from '../components/TaskDetailModal';
+import { useWebSocket } from '../hooks/useWebSocket';
 import {
   DndContext,
   DragOverlay,
@@ -69,6 +70,23 @@ export default function Pipeline() {
       setLoading(false);
     }
   };
+
+  // Live updates via WebSocket
+  const silentReload = useCallback(async () => {
+    try {
+      const data = await tasksV2.list();
+      setTasks(data);
+    } catch {}
+  }, []);
+
+  useWebSocket({
+    onEvent: {
+      task_created: silentReload,
+      task_status_changed: silentReload,
+      task_updated: silentReload,
+      task_deleted: silentReload,
+    },
+  });
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     try {
