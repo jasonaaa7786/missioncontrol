@@ -57,6 +57,7 @@ export default function DatabaseSearch() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="e.g., ASOT Vietnam, KI/KI, techno festivals"
               className="flex-1 px-4 py-3 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-cyber-text-primary placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan font-body"
+              style={{ color: '#e2e8f0' }}
             />
             <Button
               type="submit"

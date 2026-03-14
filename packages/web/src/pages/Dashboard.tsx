@@ -239,11 +239,11 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header */}
       <div className="fade-in-up">
-        <h1 className="cyber-heading text-3xl sm:text-4xl lg:text-5xl font-bold mb-3">LIVESCAPE MISSION CONTROL</h1>
-        <p className="text-cyber-text-secondary text-lg font-body">
+        <h1 className="cyber-heading text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">LIVESCAPE MISSION CONTROL</h1>
+        <p className="text-cyber-text-secondary text-sm font-body">
           Intelligence & Operations Hub
         </p>
       </div>
@@ -257,7 +257,7 @@ export default function Dashboard() {
       )}
 
       {/* Today's Briefing Banner */}
-      <div className="cyber-card cyber-glow p-6 fade-in-up stagger-1">
+      <div className="cyber-card cyber-glow p-4 fade-in-up stagger-1">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="font-heading text-xl font-bold text-cyber-cyan mb-2">
@@ -290,7 +290,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-mono font-bold text-cyber-cyan">{day}</div>
+            <div className="text-2xl font-mono font-bold text-cyber-cyan">{day}</div>
             <div className="text-sm text-cyber-text-dim uppercase tracking-wide">{month} {year}</div>
             <div className="text-xs text-cyber-text-dim font-mono mt-1">{timeStr}</div>
           </div>
@@ -298,7 +298,7 @@ export default function Dashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <MetricCard
           icon={<ChartLine size={28} />}
           label="Active Projects"
@@ -412,7 +412,7 @@ export default function Dashboard() {
       )}
 
       {/* Cost Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 fade-in-up stagger-7">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 fade-in-up stagger-7">
         <CostCard
           label="Today's Spend"
           value={costData ? `$${costData.today.toFixed(2)}` : '-'}
@@ -562,14 +562,14 @@ function MetricCard({ icon, label, value, sublabel, color, delay }: {
   delay: number;
 }) {
   return (
-    <div className={`cyber-card cyber-glow-hover p-6 fade-in-up stagger-${delay}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-lg bg-gradient-to-br ${color} bg-opacity-20`}>
+    <div className={`cyber-card cyber-glow-hover p-4 fade-in-up stagger-${delay}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${color} bg-opacity-20`}>
           <div className="text-cyber-cyan">
             {icon}
           </div>
         </div>
-        <div className="text-4xl font-mono font-bold text-cyber-cyan">
+        <div className="text-3xl font-mono font-bold text-cyber-cyan">
           {value}
         </div>
       </div>
@@ -597,7 +597,7 @@ function AgentStatusCard({ name, status, progress }: {
   };
 
   return (
-    <div className="cyber-card p-4">
+    <div className="cyber-card p-3">
       <div className="flex items-center justify-between mb-3">
         <span className="cyber-badge cyber-badge-info text-[10px]">{name}</span>
         <div className={`w-2 h-2 rounded-full ${statusColors[status]} ${status !== 'offline' ? 'animate-pulse' : ''}`} />
@@ -627,7 +627,7 @@ function CostCard({ label, value, icon, loading, sublabel }: {
         <Skeleton className="h-8 w-24" />
       ) : (
         <>
-          <div className="text-2xl font-mono font-bold text-cyber-cyan">{value}</div>
+          <div className="text-xl font-mono font-bold text-cyber-cyan">{value}</div>
           {sublabel && (
             <p className="text-[10px] text-cyber-text-dim font-mono mt-1">{sublabel}</p>
           )}

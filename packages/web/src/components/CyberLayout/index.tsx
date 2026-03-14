@@ -73,7 +73,7 @@ export default function CyberLayout() {
         className="lg:ml-[62px] lg:mr-[272px] min-h-screen relative z-10 pt-14 lg:pt-0"
         style={{ minHeight: '100vh' }}
       >
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-3 sm:p-4 lg:p-6">
           <Outlet />
         </div>
       </main>

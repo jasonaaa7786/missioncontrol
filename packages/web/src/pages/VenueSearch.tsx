@@ -54,6 +54,7 @@ export default function VenueSearch() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="e.g., IMPACT Arena Bangkok, Kuala Lumpur venues"
               className="flex-1 px-4 py-3 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-cyber-text-primary placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan font-body"
+              style={{ color: '#e2e8f0' }}
             />
             <Button
               type="submit"

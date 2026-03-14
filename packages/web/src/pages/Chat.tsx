@@ -113,16 +113,16 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-6rem)] lg:h-[calc(100vh-3rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-cyber-border bg-cyber-bg-secondary/50 rounded-t-lg">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-cyber-border bg-cyber-bg-secondary/50 rounded-t-lg">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/30 flex items-center justify-center">
-              <Robot size={20} className="text-cyber-cyan" />
+            <div className="w-8 h-8 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/30 flex items-center justify-center">
+              <Robot size={16} className="text-cyber-cyan" />
             </div>
             <div>
-              <h1 className="font-heading text-lg font-bold text-cyber-text-primary">
+              <h1 className="font-heading text-sm font-bold text-cyber-text-primary">
                 {selectedAgent.name}
               </h1>
               <p className="text-[10px] text-cyber-text-dim font-mono">{selectedAgent.desc}</p>
@@ -164,13 +164,13 @@ export default function Chat() {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-cyber-bg-primary/30">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 bg-cyber-bg-primary/30">
         {messages.length === 0 && (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 rounded-full bg-cyber-cyan/5 border border-cyber-cyan/20 flex items-center justify-center mx-auto mb-6">
-              <Robot size={40} className="text-cyber-cyan/50" />
+          <div className="text-center py-10">
+            <div className="w-14 h-14 rounded-full bg-cyber-cyan/5 border border-cyber-cyan/20 flex items-center justify-center mx-auto mb-6">
+              <Robot size={28} className="text-cyber-cyan/50" />
             </div>
-            <h2 className="font-heading text-xl font-bold text-cyber-text-primary mb-2">
+            <h2 className="font-heading text-base font-bold text-cyber-text-primary mb-2">
               {selectedAgent.name} READY
             </h2>
             <p className="text-sm text-cyber-text-dim max-w-md mx-auto">
@@ -284,7 +284,7 @@ export default function Chat() {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-cyber-border bg-cyber-bg-secondary/50 p-4 rounded-b-lg">
+      <div className="border-t border-cyber-border bg-cyber-bg-secondary/50 p-3 rounded-b-lg">
         <form onSubmit={handleSend} className="flex gap-3">
           <input
             ref={inputRef}
@@ -293,12 +293,13 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={`Message ${selectedAgent.name}...`}
             disabled={loading || !sessionId}
-            className="flex-1 px-4 py-3 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-sm text-cyber-text-primary font-body placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-sm text-cyber-text-primary font-body placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan transition-colors disabled:opacity-50"
+            style={{ color: '#e2e8f0' }}
           />
           <button
             type="submit"
             disabled={loading || !input.trim() || !sessionId}
-            className="cyber-btn px-4 py-3 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+            className="cyber-btn px-3 py-2.5 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
           >
             <PaperPlaneRight size={18} weight="fill" />
           </button>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { youtube } from '../lib/api';
+import { MagnifyingGlass, MapPin, ArrowLeft, YoutubeLogo, Eye, VideoCamera, Users } from '@phosphor-icons/react';
 
 interface ChannelStats {
   channelId: string;
@@ -62,26 +63,27 @@ export default function ArtistResearch() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Artist Research</h1>
-        <p className="text-gray-400 mt-2">Search for artists and view their YouTube statistics</p>
+    <div className="p-4 sm:p-6 fade-in-up">
+      <div className="mb-6">
+        <h1 className="text-2xl font-heading cyber-heading text-cyber-cyan">Artist Research</h1>
+        <p className="text-cyber-text-secondary text-sm mt-1">Search for artists and view their YouTube statistics</p>
       </div>
 
       {/* Search Form */}
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="flex gap-4">
+      <form onSubmit={handleSearch} className="mb-6 stagger-1">
+        <div className="flex gap-3">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search for an artist (e.g., KI/KI, Armin van Buuren)"
-            className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="flex-1 px-4 py-2.5 bg-cyber-bg-secondary border border-cyber-border rounded-lg text-cyber-text-primary placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan text-sm"
+            style={{ color: '#e2e8f0' }}
           />
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="cyber-btn px-5 py-2.5 bg-cyber-cyan text-cyber-bg-primary rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-all"
           >
             {loading ? 'Searching...' : 'Search'}
           </button>
@@ -89,35 +91,35 @@ export default function ArtistResearch() {
       </form>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="mb-4 p-3 bg-cyber-red/10 border border-cyber-red/30 rounded-lg text-cyber-red text-sm">
           {error}
         </div>
       )}
 
       {/* Search Results */}
       {searchResults.length > 0 && !selectedChannel && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Search Results</h2>
-          <div className="space-y-3">
-            {searchResults.map((channel) => (
+        <div className="mb-6 stagger-2">
+          <h2 className="text-lg font-heading cyber-heading text-cyber-text-primary mb-3">Search Results</h2>
+          <div className="space-y-2">
+            {searchResults.map((channel, index) => (
               <div
                 key={channel.channelId}
                 onClick={() => handleSelectChannel(channel.channelId)}
-                className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-blue-500 cursor-pointer transition-colors"
+                className={`cyber-card p-3 hover:border-cyber-cyan cursor-pointer transition-all fade-in-up stagger-${index + 1}`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   {channel.thumbnails?.default?.url && (
                     <img
                       src={channel.thumbnails.default.url}
                       alt={channel.title}
-                      className="w-12 h-12 rounded-full"
+                      className="w-10 h-10 rounded-full ring-1 ring-cyber-border"
                     />
                   )}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white">{channel.title}</h3>
-                    <p className="text-sm text-gray-400 line-clamp-1">{channel.description}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm text-cyber-text-primary">{channel.title}</h3>
+                    <p className="text-xs text-cyber-text-dim line-clamp-1">{channel.description}</p>
                   </div>
-                  <span className="text-blue-400">View Stats →</span>
+                  <span className="text-cyber-cyan text-xs font-medium whitespace-nowrap">View Stats →</span>
                 </div>
               </div>
             ))}
@@ -127,71 +129,84 @@ export default function ArtistResearch() {
 
       {/* Channel Details */}
       {selectedChannel && (
-        <div>
+        <div className="fade-in-up">
           <button
             onClick={() => {
               setSelectedChannel(null);
               setSearchResults([]);
             }}
-            className="mb-4 text-blue-400 hover:text-blue-300"
+            className="mb-3 text-cyber-cyan hover:text-cyber-cyan/80 text-sm flex items-center gap-1.5 transition-colors"
           >
-            ← Back to search results
+            <ArrowLeft size={14} weight="bold" />
+            Back to search results
           </button>
 
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <div className="flex items-start gap-6 mb-6">
+          <div className="cyber-card p-4 sm:p-5">
+            <div className="flex items-start gap-4 mb-4">
               {selectedChannel.thumbnails?.high?.url && (
                 <img
                   src={selectedChannel.thumbnails.high.url}
                   alt={selectedChannel.title}
-                  className="w-24 h-24 rounded-full"
+                  className="w-20 h-20 rounded-full ring-2 ring-cyber-cyan/30"
                 />
               )}
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-white mb-2">{selectedChannel.title}</h2>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-heading cyber-heading text-cyber-text-primary mb-1">{selectedChannel.title}</h2>
                 {selectedChannel.customUrl && (
-                  <p className="text-gray-400 mb-2">@{selectedChannel.customUrl}</p>
+                  <p className="text-cyber-text-dim text-xs mb-1">@{selectedChannel.customUrl}</p>
                 )}
                 {selectedChannel.country && (
-                  <p className="text-gray-400 mb-2">📍 {selectedChannel.country}</p>
+                  <p className="text-cyber-text-dim text-xs mb-1 flex items-center gap-1">
+                    <MapPin size={12} weight="fill" className="text-cyber-purple" />
+                    {selectedChannel.country}
+                  </p>
                 )}
-                <p className="text-gray-300 mt-3">{selectedChannel.description}</p>
+                <p className="text-cyber-text-secondary text-xs mt-2 line-clamp-3">{selectedChannel.description}</p>
               </div>
             </div>
 
             {/* Statistics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <div className="bg-gray-900/50 rounded-lg p-5 text-center">
-                <p className="text-gray-400 text-sm mb-2">Subscribers</p>
-                <p className="text-3xl font-bold text-blue-400">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <div className="bg-cyber-bg-primary/60 border border-cyber-border rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <Users size={14} className="text-cyber-cyan" />
+                  <p className="text-cyber-text-dim text-xs">Subscribers</p>
+                </div>
+                <p className="text-2xl font-bold text-cyber-cyan font-heading">
                   {formatNumber(selectedChannel.statistics.subscriberCount)}
                 </p>
               </div>
-              <div className="bg-gray-900/50 rounded-lg p-5 text-center">
-                <p className="text-gray-400 text-sm mb-2">Total Views</p>
-                <p className="text-3xl font-bold text-green-400">
+              <div className="bg-cyber-bg-primary/60 border border-cyber-border rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <Eye size={14} className="text-cyber-green" />
+                  <p className="text-cyber-text-dim text-xs">Total Views</p>
+                </div>
+                <p className="text-2xl font-bold text-cyber-green font-heading">
                   {formatNumber(selectedChannel.statistics.viewCount)}
                 </p>
               </div>
-              <div className="bg-gray-900/50 rounded-lg p-5 text-center">
-                <p className="text-gray-400 text-sm mb-2">Videos</p>
-                <p className="text-3xl font-bold text-purple-400">
+              <div className="bg-cyber-bg-primary/60 border border-cyber-border rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <VideoCamera size={14} className="text-cyber-purple" />
+                  <p className="text-cyber-text-dim text-xs">Videos</p>
+                </div>
+                <p className="text-2xl font-bold text-cyber-purple font-heading">
                   {selectedChannel.statistics.videoCount}
                 </p>
               </div>
             </div>
 
             {/* Engagement Metrics */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-900/50 rounded-lg p-4">
-                <p className="text-gray-400 text-sm mb-1">Avg Views per Video</p>
-                <p className="text-xl font-semibold text-white">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-cyber-bg-primary/60 border border-cyber-border rounded-lg p-3">
+                <p className="text-cyber-text-dim text-xs mb-1">Avg Views per Video</p>
+                <p className="text-lg font-semibold text-cyber-text-primary">
                   {formatNumber(Math.round(selectedChannel.statistics.viewCount / selectedChannel.statistics.videoCount))}
                 </p>
               </div>
-              <div className="bg-gray-900/50 rounded-lg p-4">
-                <p className="text-gray-400 text-sm mb-1">Channel ID</p>
-                <p className="text-sm text-gray-300 font-mono truncate">{selectedChannel.channelId}</p>
+              <div className="bg-cyber-bg-primary/60 border border-cyber-border rounded-lg p-3">
+                <p className="text-cyber-text-dim text-xs mb-1">Channel ID</p>
+                <p className="text-xs text-cyber-text-secondary font-mono truncate">{selectedChannel.channelId}</p>
               </div>
             </div>
           </div>
@@ -200,9 +215,11 @@ export default function ArtistResearch() {
 
       {/* Empty State */}
       {searchResults.length === 0 && !selectedChannel && !loading && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🔍</div>
-          <p className="text-gray-400">Search for an artist to view their YouTube statistics</p>
+        <div className="text-center py-10 fade-in-up">
+          <div className="mb-3 flex justify-center">
+            <MagnifyingGlass size={48} weight="duotone" className="text-cyber-text-dim" />
+          </div>
+          <p className="text-cyber-text-secondary text-sm">Search for an artist to view their YouTube statistics</p>
         </div>
       )}
     </div>
