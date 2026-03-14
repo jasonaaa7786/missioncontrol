@@ -159,6 +159,12 @@ export const agents = {
       method: 'PATCH',
     }),
 
+  update: (id: string, data: { name?: string; imageUrl?: string }) =>
+    fetchAPI<any>(`/api/agents/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   // Subagent management
   subagents: {
     list: () => fetchAPI<any[]>('/api/agents/subagents'),
@@ -182,6 +188,7 @@ export const agents = {
       skills?: string[];
       soulContent?: string;
       projectIds?: string[];
+      imageUrl?: string;
     }) =>
       fetchAPI<any>(`/api/agents/subagents/${id}`, {
         method: 'PATCH',

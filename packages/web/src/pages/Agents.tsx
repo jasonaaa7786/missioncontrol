@@ -14,7 +14,11 @@ import {
   Pause,
   Play,
   Trash,
+  PencilSimple,
+  X,
+  Camera,
 } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 import { Skeleton } from '../components/ui/skeleton';
 
 interface EnrichedAgent {
@@ -58,6 +62,7 @@ export default function Agents() {
   const [activityLoading, setActivityLoading] = useState(false);
   const [sortField, setSortField] = useState<'name' | 'totalCost' | 'runCount' | 'lastActiveAt'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [editingAgent, setEditingAgent] = useState<EnrichedAgent | null>(null);
 
   // Cast agents as enriched type
   const agents = allAgents as unknown as EnrichedAgent[];
@@ -428,17 +433,26 @@ export default function Agents() {
                         </td>
                         {isAdmin && (
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => handleToggle(agent.id)}
-                              className={`p-1.5 rounded transition-colors ${
-                                agent.isActive
-                                  ? 'hover:bg-cyber-yellow/10 text-cyber-yellow'
-                                  : 'hover:bg-cyber-green/10 text-cyber-green'
-                              }`}
-                              title={agent.isActive ? 'Pause' : 'Activate'}
-                            >
-                              {agent.isActive ? <Pause size={14} /> : <Play size={14} />}
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setEditingAgent(agent)}
+                                className="p-1.5 rounded transition-colors hover:bg-cyber-cyan/10 text-cyber-text-dim hover:text-cyber-cyan"
+                                title="Edit profile"
+                              >
+                                <PencilSimple size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleToggle(agent.id)}
+                                className={`p-1.5 rounded transition-colors ${
+                                  agent.isActive
+                                    ? 'hover:bg-cyber-yellow/10 text-cyber-yellow'
+                                    : 'hover:bg-cyber-green/10 text-cyber-green'
+                                }`}
+                                title={agent.isActive ? 'Pause' : 'Activate'}
+                              >
+                                {agent.isActive ? <Pause size={14} /> : <Play size={14} />}
+                              </button>
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -571,6 +585,13 @@ export default function Agents() {
                           {agent.isActive ? 'Pause' : 'Activate'}
                         </button>
                         <button
+                          onClick={() => setEditingAgent(agent)}
+                          className="px-2 py-1.5 rounded text-xs text-cyber-cyan hover:bg-cyber-cyan/10 transition-colors"
+                          title="Edit profile"
+                        >
+                          <PencilSimple size={14} />
+                        </button>
+                        <button
                           onClick={() => handleDeleteSubagent(agent.id, agent.name)}
                           className="px-2 py-1.5 rounded text-xs text-cyber-red hover:bg-cyber-red/10 transition-colors"
                         >
@@ -585,6 +606,184 @@ export default function Agents() {
           )}
         </>
       )}
+
+      {/* Edit Agent Modal */}
+      {editingAgent && (
+        <EditAgentModal
+          agent={editingAgent}
+          onClose={() => setEditingAgent(null)}
+          onSave={async () => {
+            setEditingAgent(null);
+            // Reload both core agents and subagents
+            if (editingAgent.isSubagent) {
+              await loadSubagents();
+            }
+            // Core agents come from useAgents hook — trigger a re-fetch
+            await syncAgents().catch(() => {});
+            window.location.reload();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Edit Agent Modal ───────────────────────────────────────────────
+function EditAgentModal({
+  agent,
+  onClose,
+  onSave,
+}: {
+  agent: EnrichedAgent;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const [name, setName] = useState(agent.name);
+  const [imageUrl, setImageUrl] = useState(agent.imageUrl || '');
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    agent.imageUrl ? `/api${agent.imageUrl}` : null
+  );
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload
+    setUploading(true);
+    try {
+      const result = await api.uploads.uploadAgentImage(file);
+      setImageUrl(result.imageUrl);
+      toast.success('Image uploaded');
+    } catch (err) {
+      toast.error('Failed to upload image');
+      setImagePreview(agent.imageUrl ? `/api${agent.imageUrl}` : null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const data: { name?: string; imageUrl?: string } = {};
+      if (name !== agent.name) data.name = name;
+      if (imageUrl !== (agent.imageUrl || '')) data.imageUrl = imageUrl;
+
+      if (Object.keys(data).length === 0) {
+        onClose();
+        return;
+      }
+
+      if (agent.isSubagent) {
+        await api.agents.subagents.update(agent.id, data);
+      } else {
+        await api.agents.update(agent.id, data);
+      }
+
+      toast.success('Agent profile updated');
+      onSave();
+    } catch (err) {
+      toast.error('Failed to update agent');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="cyber-card w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-heading text-xl font-bold text-cyber-cyan">EDIT AGENT</h2>
+          <button onClick={onClose} className="text-cyber-text-dim hover:text-cyber-cyan transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Avatar */}
+        <div className="flex flex-col items-center mb-6">
+          <label className="relative cursor-pointer group">
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt={name}
+                className="w-24 h-24 rounded-full border-2 border-cyber-border object-cover group-hover:border-cyber-cyan transition-colors"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-cyber-bg-tertiary border-2 border-cyber-border flex items-center justify-center group-hover:border-cyber-cyan transition-colors">
+                <Robot size={32} className="text-cyber-text-dim" />
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera size={24} className="text-white" />
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </label>
+          <p className="text-[10px] text-cyber-text-dim mt-2 font-mono">
+            {uploading ? 'Uploading...' : 'Click to change avatar'}
+          </p>
+        </div>
+
+        {/* Name */}
+        <div className="mb-6">
+          <label className="block text-xs text-cyber-text-dim uppercase tracking-wider font-heading mb-2">
+            Display Name
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-4 py-2 bg-cyber-bg-tertiary border border-cyber-border rounded text-sm text-cyber-text-primary font-mono focus:outline-none focus:border-cyber-cyan transition-colors"
+          />
+        </div>
+
+        {/* Agent ID (read-only) */}
+        <div className="mb-6">
+          <label className="block text-xs text-cyber-text-dim uppercase tracking-wider font-heading mb-2">
+            Agent ID
+          </label>
+          <div className="px-4 py-2 bg-cyber-bg-tertiary/50 border border-cyber-border/50 rounded text-sm text-cyber-text-dim font-mono">
+            {agent.id}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 bg-cyber-bg-tertiary border border-cyber-border rounded text-sm text-cyber-text-primary hover:border-cyber-cyan transition-colors font-heading uppercase tracking-wide"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || uploading || !name.trim()}
+            className="flex-1 cyber-btn py-2 text-sm font-heading uppercase tracking-wide disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

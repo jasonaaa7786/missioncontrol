@@ -167,6 +167,28 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     return agent;
   });
 
+  // Update agent profile (name, imageUrl) — admin only
+  fastify.patch('/:id', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { name, imageUrl } = request.body as { name?: string; imageUrl?: string };
+
+    const agent = await fastify.prisma.agent.findUnique({ where: { id } });
+    if (!agent) {
+      reply.code(404).send({ error: 'Agent not found' });
+      return;
+    }
+
+    const updated = await fastify.prisma.agent.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(imageUrl !== undefined && { imageUrl }),
+      },
+    });
+
+    return updated;
+  });
+
   // Toggle agent active status (admin only)
   fastify.patch('/:id/toggle', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -251,12 +273,13 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
   // Update subagent (admin only)
   fastify.patch('/subagents/:id', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { name, description, skills, soulContent, projectIds } = request.body as {
+    const { name, description, skills, soulContent, projectIds, imageUrl } = request.body as {
       name?: string;
       description?: string;
       skills?: string[];
       soulContent?: string;
       projectIds?: string[];
+      imageUrl?: string;
     };
 
     const agent = await fastify.prisma.agent.findUnique({
@@ -276,6 +299,7 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
         ...(skills && { skills: JSON.stringify(skills) }),
         ...(soulContent !== undefined && { soulContent }),
         ...(projectIds && { projectIds: JSON.stringify(projectIds) }),
+        ...(imageUrl !== undefined && { imageUrl }),
       },
     });
 
