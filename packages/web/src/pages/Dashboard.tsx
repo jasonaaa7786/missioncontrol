@@ -239,11 +239,11 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Header */}
       <div className="fade-in-up">
-        <h1 className="cyber-heading text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">LIVESCAPE MISSION CONTROL</h1>
-        <p className="text-cyber-text-secondary text-sm font-body">
+        <h1 className="cyber-heading text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5">LIVESCAPE MISSION CONTROL</h1>
+        <p className="text-cyber-text-secondary text-xs font-body">
           Intelligence & Operations Hub
         </p>
       </div>
@@ -257,11 +257,11 @@ export default function Dashboard() {
       )}
 
       {/* Today's Briefing Banner */}
-      <div className="cyber-card cyber-glow p-4 fade-in-up stagger-1">
+      <div className="cyber-card cyber-glow p-3 fade-in-up stagger-1">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="font-heading text-xl font-bold text-cyber-cyan mb-2">
-              TODAY'S INTELLIGENCE BRIEFING
+            <h2 className="font-heading text-sm font-bold text-cyber-cyan mb-1.5 uppercase tracking-wide">
+              Today's Intelligence Briefing
             </h2>
             <div className="space-y-2 text-sm">
               {loading ? (
@@ -300,7 +300,7 @@ export default function Dashboard() {
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <MetricCard
-          icon={<ChartLine size={28} />}
+          icon={<ChartLine size={22} />}
           label="Active Projects"
           value={loading ? '-' : stats.projects.toString()}
           sublabel="Mission folders"
@@ -308,7 +308,7 @@ export default function Dashboard() {
           delay={2}
         />
         <MetricCard
-          icon={<Queue size={28} />}
+          icon={<Queue size={22} />}
           label="Tasks in Queue"
           value={loading ? '-' : stats.tasksInQueue.toString()}
           sublabel="Pending work items"
@@ -316,7 +316,7 @@ export default function Dashboard() {
           delay={3}
         />
         <MetricCard
-          icon={<Users size={28} />}
+          icon={<Users size={22} />}
           label="Agent Swarm"
           value={loading ? '-' : stats.activeAgents.toString()}
           sublabel="Online & ready"
@@ -324,7 +324,7 @@ export default function Dashboard() {
           delay={4}
         />
         <MetricCard
-          icon={<Calendar size={28} />}
+          icon={<Calendar size={22} />}
           label="Heartbeats"
           value={loading ? '-' : stats.schedules.toString()}
           sublabel="Automated checks"
@@ -340,7 +340,7 @@ export default function Dashboard() {
           <CardDescription>Livescape intelligence network status</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="cyber-card p-4 space-y-3">
@@ -441,7 +441,7 @@ export default function Dashboard() {
       </div>
 
       {/* Cost Chart + Model Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="fade-in-up stagger-8">
           {loading || !costData ? (
             <Card className="cyber-card">
@@ -562,18 +562,18 @@ function MetricCard({ icon, label, value, sublabel, color, delay }: {
   delay: number;
 }) {
   return (
-    <div className={`cyber-card cyber-glow-hover p-4 fade-in-up stagger-${delay}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className={`p-2 rounded-lg bg-gradient-to-br ${color} bg-opacity-20`}>
+    <div className={`cyber-card cyber-glow-hover p-3 fade-in-up stagger-${delay}`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className={`p-1.5 rounded-lg bg-gradient-to-br ${color} bg-opacity-20`}>
           <div className="text-cyber-cyan">
             {icon}
           </div>
         </div>
-        <div className="text-3xl font-mono font-bold text-cyber-cyan">
+        <div className="text-2xl font-mono font-bold text-cyber-cyan">
           {value}
         </div>
       </div>
-      <p className="text-sm text-cyber-text-primary uppercase tracking-wide font-heading mb-1">
+      <p className="text-xs text-cyber-text-primary uppercase tracking-wide font-heading mb-0.5">
         {label}
       </p>
       {sublabel && (
@@ -618,16 +618,16 @@ function CostCard({ label, value, icon, loading, sublabel }: {
   sublabel?: string;
 }) {
   return (
-    <div className="cyber-card p-4">
-      <div className="flex items-center gap-3 mb-2">
+    <div className="cyber-card p-3">
+      <div className="flex items-center gap-2 mb-1.5">
         <div className="text-cyber-cyan opacity-60">{icon}</div>
-        <span className="text-xs text-cyber-text-dim uppercase tracking-wider font-heading">{label}</span>
+        <span className="text-[10px] text-cyber-text-dim uppercase tracking-wider font-heading">{label}</span>
       </div>
       {loading ? (
-        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-6 w-20" />
       ) : (
         <>
-          <div className="text-xl font-mono font-bold text-cyber-cyan">{value}</div>
+          <div className="text-lg font-mono font-bold text-cyber-cyan">{value}</div>
           {sublabel && (
             <p className="text-[10px] text-cyber-text-dim font-mono mt-1">{sublabel}</p>
           )}

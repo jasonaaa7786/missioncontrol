@@ -293,8 +293,7 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={`Message ${selectedAgent.name}...`}
             disabled={loading || !sessionId}
-            className="flex-1 px-4 py-2.5 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-sm text-cyber-text-primary font-body placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan transition-colors disabled:opacity-50"
-            style={{ color: '#e2e8f0' }}
+            className="flex-1 px-4 py-2.5 bg-cyber-bg-tertiary border border-cyber-border rounded-lg text-sm text-white caret-white font-body placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan transition-colors disabled:opacity-50"
           />
           <button
             type="submit"

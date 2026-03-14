@@ -8,7 +8,7 @@ const youtubeRoutes: FastifyPluginAsync = async (fastify) => {
   // Get YouTube channel statistics by channel ID
   fastify.get<{
     Params: { channelId: string };
-  }>('/channel/:channelId', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  }>('/channel/:channelId', async (request, reply) => {
     const { channelId } = request.params;
     const apiKey = process.env.YOUTUBE_API_KEY;
 
@@ -50,7 +50,7 @@ const youtubeRoutes: FastifyPluginAsync = async (fastify) => {
   // Search for YouTube channels by name
   fastify.get<{
     Querystring: { q: string; maxResults?: string };
-  }>('/search', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  }>('/search', async (request, reply) => {
     const { q, maxResults = '5' } = request.query;
     const apiKey = process.env.YOUTUBE_API_KEY;
 

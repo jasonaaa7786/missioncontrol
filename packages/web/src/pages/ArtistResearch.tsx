@@ -77,8 +77,7 @@ export default function ArtistResearch() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search for an artist (e.g., KI/KI, Armin van Buuren)"
-            className="flex-1 px-4 py-2.5 bg-cyber-bg-secondary border border-cyber-border rounded-lg text-cyber-text-primary placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan text-sm"
-            style={{ color: '#e2e8f0' }}
+            className="flex-1 px-4 py-2.5 bg-cyber-bg-secondary border border-cyber-border rounded-lg text-white caret-white placeholder-cyber-text-dim focus:outline-none focus:border-cyber-cyan text-sm"
           />
           <button
             type="submit"

@@ -486,3 +486,18 @@ export const activity = {
   
   stats: () => fetchAPI<{ total: number; today: number; byType: Record<string, number> }>('/api/activity/stats'),
 };
+
+// Search API
+export const search = {
+  query: (q: string, type: string = 'all', limit: number = 20) =>
+    fetchAPI<{
+      query: string;
+      type: string;
+      totalResults: number;
+      projects: any[];
+      tasks: any[];
+      agents: any[];
+    }>('/api/search', {
+      params: { q, type, limit: limit.toString() },
+    }),
+};

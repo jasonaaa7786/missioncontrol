@@ -166,11 +166,11 @@ export default function ActivityFeed() {
   return (
     <div className="fixed right-0 top-0 h-screen w-[272px] bg-cyber-bg-secondary border-l border-cyber-border flex flex-col z-40">
       {/* Header */}
-      <div className="p-4 border-b border-cyber-border">
-        <h3 className="font-heading text-sm font-bold text-cyber-cyan uppercase tracking-wider">
+      <div className="px-3 py-2 border-b border-cyber-border">
+        <h3 className="font-heading text-xs font-bold text-cyber-cyan uppercase tracking-wider">
           Live Activity
         </h3>
-        <p className="text-xs text-cyber-text-dim mt-1">Real-time agent updates</p>
+        <p className="text-[10px] text-cyber-text-dim mt-0.5">Real-time agent updates</p>
       </div>
 
       {/* Filter */}
@@ -190,7 +190,7 @@ export default function ActivityFeed() {
       </div>
 
       {/* Activity List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {loading && activities.length === 0 ? (
           <div className="text-center text-cyber-text-dim text-xs py-8">
             Loading...
@@ -242,14 +242,14 @@ export default function ActivityFeed() {
       </div>
 
       {/* Footer Stats */}
-      <div className="p-4 border-t border-cyber-border">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="px-3 py-2 border-t border-cyber-border">
+        <div className="grid grid-cols-2 gap-2">
           <div className="text-center">
-            <div className="text-lg font-mono font-bold text-cyber-cyan">{activities.length}</div>
+            <div className="text-sm font-mono font-bold text-cyber-cyan">{activities.length}</div>
             <div className="text-[10px] text-cyber-text-dim uppercase tracking-wide">Shown</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-mono font-bold text-cyber-green">
+            <div className="text-sm font-mono font-bold text-cyber-green">
               {activities.filter(a => a.type === 'agent_completed').length}
             </div>
             <div className="text-[10px] text-cyber-text-dim uppercase tracking-wide">Complete</div>
