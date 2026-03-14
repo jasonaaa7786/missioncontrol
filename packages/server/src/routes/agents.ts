@@ -2,7 +2,11 @@ import { FastifyPluginAsync } from 'fastify';
 import { readFile } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { wsBroadcast } from '../utils/ws-broadcast.js';
+
+const execAsync = promisify(exec);
 
 const agentRoutes: FastifyPluginAsync = async (fastify) => {
   // Sync agents from OpenClaw config (admin only)
@@ -329,6 +333,93 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     });
 
     return { success: true };
+  });
+
+  // ========== DISPATCH / COMMAND ==========
+
+  // Dispatch a command to an agent (admin only)
+  fastify.post('/:id/dispatch', { preHandler: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { command, timeout = 60 } = request.body as { command: string; timeout?: number };
+
+    if (!command?.trim()) {
+      reply.code(400).send({ error: 'Command is required' });
+      return;
+    }
+
+    const agent = await fastify.prisma.agent.findUnique({ where: { id } });
+    if (!agent) {
+      reply.code(404).send({ error: 'Agent not found' });
+      return;
+    }
+
+    // Log dispatch start
+    await fastify.prisma.activity.create({
+      data: {
+        type: 'agent_started',
+        agentId: id,
+        message: `Agent dispatched: ${command.substring(0, 100)}`,
+        metadata: JSON.stringify({ command, dispatchedBy: 'admin' }),
+      },
+    });
+
+    wsBroadcast.broadcast('agent_dispatched', { agentId: id, command });
+
+    // Execute via OpenClaw CLI (async — don't block response)
+    const agentDir = `/root/livescape-marketing/${id}`;
+    const safeCmd = command.replace(/"/g, '\\"');
+    const execCmd = `cd ${agentDir} && openclaw chat --agent=${id} --message="${safeCmd}" --profile=livescape --timeout=${timeout}`;
+
+    // Return immediately, process in background
+    const dispatchId = Date.now().toString();
+
+    // Fire and forget — log result when done
+    execAsync(execCmd, {
+      timeout: (timeout + 5) * 1000,
+      maxBuffer: 1024 * 1024 * 10,
+    })
+      .then(async ({ stdout, stderr }) => {
+        const response = stdout?.trim() || '[No output]';
+        await fastify.prisma.activity.create({
+          data: {
+            type: 'agent_completed',
+            agentId: id,
+            message: `Agent completed: ${response.substring(0, 200)}`,
+            metadata: JSON.stringify({
+              command,
+              response: response.substring(0, 1000),
+              dispatchId,
+            }),
+          },
+        });
+        wsBroadcast.broadcast('agent_completed', {
+          agentId: id,
+          dispatchId,
+          response: response.substring(0, 500),
+        });
+      })
+      .catch(async (err: any) => {
+        await fastify.prisma.activity.create({
+          data: {
+            type: 'agent_error',
+            agentId: id,
+            message: `Agent error: ${err.message?.substring(0, 200)}`,
+            metadata: JSON.stringify({ command, error: err.message, dispatchId }),
+          },
+        });
+        wsBroadcast.broadcast('agent_error', {
+          agentId: id,
+          dispatchId,
+          error: err.message?.substring(0, 200),
+        });
+      });
+
+    return {
+      dispatched: true,
+      dispatchId,
+      agentId: id,
+      command: command.substring(0, 100),
+    };
   });
 };
 

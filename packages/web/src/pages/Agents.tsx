@@ -18,6 +18,8 @@ import {
   PencilSimple,
   X,
   Camera,
+  Terminal,
+  PaperPlaneRight,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Skeleton } from '../components/ui/skeleton';
@@ -64,6 +66,7 @@ export default function Agents() {
   const [sortField, setSortField] = useState<'name' | 'totalCost' | 'runCount' | 'lastActiveAt'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [editingAgent, setEditingAgent] = useState<EnrichedAgent | null>(null);
+  const [dispatchAgent, setDispatchAgent] = useState<EnrichedAgent | null>(null);
 
   // Cast agents as enriched type
   const agents = allAgents as unknown as EnrichedAgent[];
@@ -449,6 +452,13 @@ export default function Agents() {
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
                               <button
+                                onClick={() => setDispatchAgent(agent)}
+                                className="p-1.5 rounded transition-colors hover:bg-cyber-green/10 text-cyber-text-dim hover:text-cyber-green"
+                                title="Dispatch command"
+                              >
+                                <Terminal size={14} />
+                              </button>
+                              <button
                                 onClick={() => setEditingAgent(agent)}
                                 className="p-1.5 rounded transition-colors hover:bg-cyber-cyan/10 text-cyber-text-dim hover:text-cyber-cyan"
                                 title="Edit profile"
@@ -633,6 +643,14 @@ export default function Agents() {
           }}
         />
       )}
+
+      {/* Dispatch Modal */}
+      {dispatchAgent && (
+        <DispatchModal
+          agent={dispatchAgent}
+          onClose={() => setDispatchAgent(null)}
+        />
+      )}
     </div>
   );
 }
@@ -792,6 +810,140 @@ function EditAgentModal({
             {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dispatch Modal ─────────────────────────────────────────────────
+function DispatchModal({
+  agent,
+  onClose,
+}: {
+  agent: EnrichedAgent;
+  onClose: () => void;
+}) {
+  const [command, setCommand] = useState('');
+  const [dispatching, setDispatching] = useState(false);
+  const [result, setResult] = useState<{ dispatched: boolean; dispatchId: string } | null>(null);
+
+  const handleDispatch = async () => {
+    if (!command.trim()) return;
+    setDispatching(true);
+    try {
+      const res = await api.agents.dispatch(agent.id, command.trim());
+      setResult(res);
+      toast.success(`Command dispatched to ${agent.name}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to dispatch');
+    } finally {
+      setDispatching(false);
+    }
+  };
+
+  const presets = [
+    'Run heartbeat check',
+    'Check pending tasks and process',
+    'Generate status report',
+    'Scan for new opportunities',
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="cyber-card w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-cyber-green/10 border border-cyber-green/30 flex items-center justify-center">
+              <Terminal size={20} className="text-cyber-green" />
+            </div>
+            <div>
+              <h2 className="font-heading text-lg font-bold text-cyber-green">DISPATCH</h2>
+              <p className="text-[10px] text-cyber-text-dim font-mono">{agent.id}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-cyber-text-dim hover:text-cyber-cyan transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        {!result ? (
+          <>
+            {/* Quick Presets */}
+            <div className="mb-4">
+              <label className="block text-xs text-cyber-text-dim uppercase tracking-wider font-heading mb-2">
+                Quick Commands
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {presets.map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => setCommand(preset)}
+                    className="px-3 py-1.5 text-[10px] bg-cyber-bg-tertiary border border-cyber-border rounded-full text-cyber-text-secondary hover:border-cyber-green hover:text-cyber-green transition-colors font-mono"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Command Input */}
+            <div className="mb-6">
+              <label className="block text-xs text-cyber-text-dim uppercase tracking-wider font-heading mb-2">
+                Command
+              </label>
+              <textarea
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder="Enter command for the agent..."
+                rows={3}
+                className="w-full px-4 py-3 bg-cyber-bg-tertiary border border-cyber-border rounded text-sm text-cyber-text-primary font-mono focus:outline-none focus:border-cyber-green transition-colors resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2 bg-cyber-bg-tertiary border border-cyber-border rounded text-sm text-cyber-text-primary hover:border-cyber-cyan transition-colors font-heading uppercase tracking-wide"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDispatch}
+                disabled={dispatching || !command.trim()}
+                className="flex-1 py-2 bg-cyber-green/20 border border-cyber-green/50 rounded text-sm text-cyber-green hover:bg-cyber-green/30 transition-colors font-heading uppercase tracking-wide disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {dispatching ? (
+                  <>Dispatching...</>
+                ) : (
+                  <>
+                    <PaperPlaneRight size={14} weight="fill" />
+                    Dispatch
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-6">
+            <div className="w-16 h-16 rounded-full bg-cyber-green/10 border border-cyber-green/30 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={32} className="text-cyber-green" />
+            </div>
+            <h3 className="font-heading text-lg text-cyber-green mb-2">DISPATCHED</h3>
+            <p className="text-xs text-cyber-text-dim font-mono mb-1">
+              ID: {result.dispatchId}
+            </p>
+            <p className="text-sm text-cyber-text-secondary mb-6">
+              The command is running in the background. Check the activity feed for results.
+            </p>
+            <button
+              onClick={onClose}
+              className="cyber-btn px-6 py-2 text-sm font-heading uppercase tracking-wide"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

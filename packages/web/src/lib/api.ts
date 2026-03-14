@@ -165,6 +165,12 @@ export const agents = {
       body: JSON.stringify(data),
     }),
 
+  dispatch: (id: string, command: string, timeout?: number) =>
+    fetchAPI<{ dispatched: boolean; dispatchId: string; agentId: string }>(`/api/agents/${id}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify({ command, timeout }),
+    }),
+
   // Subagent management
   subagents: {
     list: () => fetchAPI<any[]>('/api/agents/subagents'),
