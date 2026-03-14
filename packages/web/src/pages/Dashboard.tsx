@@ -1,25 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { projects, agents, schedules, tasksV2, activity as activityAPI, system } from '../lib/api';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import CostTrendChart from '../components/charts/CostTrendChart';
-// SubscriberGrowthChart removed — replaced by CostTrendChart
 import {
-  ChartLine,
-  TrendUp,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
+import {
+  ShieldWarning,
+  Circle,
   Users,
-  Calendar,
-  CheckCircle,
+  Folder,
   Queue,
-  Lightning,
-  FileText,
-  ChatCircle,
-  ArrowRight,
-  WarningCircle,
-  CurrencyDollar,
-  Coin,
-  ChartBar,
-  ShieldWarning
+  Timer,
+  Play,
+  Pause,
 } from '@phosphor-icons/react';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -29,610 +23,410 @@ interface Agent {
   agentId: string;
   isActive: boolean;
   model?: string;
+  lastActiveAt?: string;
   workDir?: string;
 }
 
-interface BriefingItem {
+interface Schedule {
   id: string;
-  type: string;
-  message: string;
-  agentId?: string | null;
-  createdAt: string;
+  name: string;
+  cronExpression: string;
+  enabled: boolean;
+  lastRun?: string;
+  nextRun?: string;
+  agentId?: string;
+  model?: string;
 }
 
+const CHART_COLORS = ['#00d9ff', '#a855f7', '#00ff88', '#ffd700', '#ff3366', '#f97316'];
+
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    projects: 0,
-    tasksInQueue: 0,
-    activeAgents: 0,
-    schedules: 0,
-  });
+  const [stats, setStats] = useState({ projects: 0, tasksInQueue: 0, activeAgents: 0, totalAgents: 0, schedules: 0 });
   const [agentsList, setAgentsList] = useState<Agent[]>([]);
-  const [briefingItems, setBriefingItems] = useState<BriefingItem[]>([]);
+  const [schedulesList, setSchedulesList] = useState<Schedule[]>([]);
   const [costData, setCostData] = useState<{
-    today: number;
-    sevenDay: number;
-    thirtyDay: number;
-    allTime: number;
-    projected: number;
-    totalTokens: number;
+    today: number; sevenDay: number; thirtyDay: number; allTime: number;
+    projected: number; totalTokens: number;
     byModel: { model: string; tokens: number; cost: number; calls: number }[];
     byAgent: { agent: string; tokens: number; cost: number; calls: number }[];
     dailyTrend: { date: string; cost: number; tokens: number }[];
   } | null>(null);
-  const [alerts, setAlerts] = useState<Array<{
-    type: string;
-    severity: 'critical' | 'warning' | 'info';
-    message: string;
-    agentId?: string;
-    timestamp: string;
-  }>>([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [alerts, setAlerts] = useState<Array<{ type: string; severity: 'critical' | 'warning' | 'info'; message: string; agentId?: string; timestamp: string }>>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Live clock
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Use Promise.allSettled so one failing API doesn't break everything
         const results = await Promise.allSettled([
-          projects.list(),
-          agents.list(),
-          schedules.list(),
-          tasksV2.list(),
-          activityAPI.feed({ limit: 3 }),
-          system.costs(),
-          system.alerts(),
+          projects.list(), agents.list(), schedules.list(),
+          tasksV2.list(), system.costs(), system.alerts(),
         ]);
-
-        const [projectsResult, agentsResult, schedulesResult, tasksResult, activityResult, costsResult, alertsResult] = results;
-
-        // Extract data safely from settled promises
-        const projectsData = projectsResult.status === 'fulfilled' ? projectsResult.value : [];
-        const agentsData = agentsResult.status === 'fulfilled' ? agentsResult.value : [];
-        const schedulesData = schedulesResult.status === 'fulfilled' ? schedulesResult.value : [];
-        const tasksData = tasksResult.status === 'fulfilled' ? tasksResult.value : [];
-        const activityData = activityResult.status === 'fulfilled' ? activityResult.value : [];
-        const costsDataResult = costsResult.status === 'fulfilled' ? costsResult.value : null;
-        const alertsDataResult = alertsResult.status === 'fulfilled' ? alertsResult.value : [];
-
-        // Count active projects (status = 'active')
-        const activeProjects = projectsData.filter((p: any) => p.status === 'active').length;
-
-        // Count active agents (isActive = true)
-        const activeAgents = agentsData.filter((a: any) => a.isActive).length;
-
-        // Count tasks in queue (not done)
-        const tasksInQueue = tasksData.filter((t: any) => t.status !== 'done').length;
-
-        // Count enabled schedules
-        const enabledSchedules = schedulesData.filter((s: any) => s.enabled).length;
-
-        setStats({
-          projects: activeProjects,
-          tasksInQueue: tasksInQueue,
-          activeAgents: activeAgents,
-          schedules: enabledSchedules,
-        });
-
-        setAgentsList(agentsData);
-        setBriefingItems(activityData);
-        if (costsDataResult) setCostData(costsDataResult);
-        setAlerts(alertsDataResult);
-      } catch (err) {
-        console.error('Failed to fetch dashboard stats:', err);
-        setError('Failed to load dashboard data. Retrying...');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-
-    // Refresh every 60 seconds (WebSocket handles live updates)
-    const interval = setInterval(fetchStats, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Real-time updates via WebSocket
-  const reloadDashboard = useCallback(() => {
-    // Debounce: ignore if already loading
-    const fetchQuiet = async () => {
-      try {
-        const results = await Promise.allSettled([
-          projects.list(),
-          agents.list(),
-          tasksV2.list(),
-          activityAPI.feed({ limit: 3 }),
-          system.alerts(),
-        ]);
-        const [pr, ag, tk, ac, al] = results;
+        const [pr, ag, sc, tk, co, al] = results;
         const p = pr.status === 'fulfilled' ? pr.value : [];
         const a = ag.status === 'fulfilled' ? ag.value : [];
+        const s = sc.status === 'fulfilled' ? sc.value : [];
         const t = tk.status === 'fulfilled' ? tk.value : [];
+
         setStats({
           projects: p.filter((x: any) => x.status === 'active').length,
           tasksInQueue: t.filter((x: any) => x.status !== 'done').length,
           activeAgents: a.filter((x: any) => x.isActive).length,
-          schedules: stats.schedules,
+          totalAgents: a.length,
+          schedules: s.filter((x: any) => x.enabled).length,
         });
         setAgentsList(a);
-        if (ac.status === 'fulfilled') setBriefingItems(ac.value);
+        setSchedulesList(s);
+        if (co.status === 'fulfilled') setCostData(co.value);
+        if (al.status === 'fulfilled') setAlerts(al.value);
+      } catch (err) {
+        console.error('Dashboard fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const reloadDashboard = useCallback(() => {
+    const fetchQuiet = async () => {
+      try {
+        const results = await Promise.allSettled([
+          projects.list(), agents.list(), tasksV2.list(), system.alerts(),
+        ]);
+        const [pr, ag, tk, al] = results;
+        const p = pr.status === 'fulfilled' ? pr.value : [];
+        const a = ag.status === 'fulfilled' ? ag.value : [];
+        const t = tk.status === 'fulfilled' ? tk.value : [];
+        setStats(prev => ({
+          ...prev,
+          projects: p.filter((x: any) => x.status === 'active').length,
+          tasksInQueue: t.filter((x: any) => x.status !== 'done').length,
+          activeAgents: a.filter((x: any) => x.isActive).length,
+          totalAgents: a.length,
+        }));
+        setAgentsList(a);
         if (al.status === 'fulfilled') setAlerts(al.value);
       } catch {}
     };
     fetchQuiet();
-  }, [stats.schedules]);
+  }, []);
 
   useWebSocket({
     onEvent: {
-      task_created: reloadDashboard,
-      task_status_changed: reloadDashboard,
-      task_updated: reloadDashboard,
-      task_deleted: reloadDashboard,
-      agent_updated: reloadDashboard,
-      agent_toggled: reloadDashboard,
+      task_created: reloadDashboard, task_status_changed: reloadDashboard,
+      task_updated: reloadDashboard, task_deleted: reloadDashboard,
+      agent_updated: reloadDashboard, agent_toggled: reloadDashboard,
     },
   });
 
-  const getBriefingIcon = (type: string) => {
-    switch (type) {
-      case 'agent_completed':
-        return <CheckCircle size={16} className="text-cyber-green" />;
-      case 'agent_started':
-        return <Lightning size={16} className="text-cyber-yellow" />;
-      case 'task_created':
-      case 'task_updated':
-        return <FileText size={16} className="text-cyber-cyan" />;
-      case 'comment_added':
-        return <ChatCircle size={16} className="text-cyber-purple" />;
-      case 'status_changed':
-        return <TrendUp size={16} className="text-cyber-cyan" />;
-      default:
-        return <ArrowRight size={16} className="text-cyber-text-dim" />;
-    }
+  // Format chart data
+  const trendData = costData?.dailyTrend.map(d => ({
+    ...d,
+    label: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  })) || [];
+
+  const modelChartData = costData?.byModel.slice(0, 5).map(m => ({
+    name: m.model.replace('claude-', '').replace(/-20\d{6}/, '').substring(0, 14),
+    cost: Number(m.cost.toFixed(4)),
+    calls: m.calls,
+  })) || [];
+
+  const agentChartData = costData?.byAgent.slice(0, 6).map(a => ({
+    name: a.agent.replace('livescape-', '').substring(0, 8).toUpperCase(),
+    runs: a.calls,
+    cost: Number(a.cost.toFixed(4)),
+  })) || [];
+
+  const pieData = costData?.byModel.map((m, i) => ({
+    name: m.model.replace('claude-', '').replace(/-20\d{6}/, ''),
+    value: Number(m.cost.toFixed(4)),
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  })) || [];
+
+  // Time ago helper
+  const timeAgo = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
   };
 
-  // Format briefing messages to be human-readable
-  const formatBriefingMessage = (item: BriefingItem) => {
-    const agent = item.agentId?.replace('livescape-', '').toUpperCase();
-    const msg = item.message;
-
-    // Clean up verbose heartbeat/agent messages
-    if (msg.includes('heartbeat triggered') && msg.includes('HEARTBEAT.md updated')) {
-      return `${agent || 'Agent'} completed routine check — status updated`;
-    }
-    if (msg.includes('heartbeat started') && msg.includes('has_tasks')) {
-      return `${agent || 'Agent'} picked up pending tasks and began processing`;
-    }
-    if (msg.includes('heartbeat triggered')) {
-      return `${agent || 'Agent'} ran scheduled health check`;
-    }
-    if (msg.includes('heartbeat started')) {
-      return `${agent || 'Agent'} started a new work session`;
-    }
-    if (item.type === 'task_created') {
-      return msg.length > 60 ? msg.substring(0, 57) + '...' : msg;
-    }
-    if (item.type === 'status_changed') {
-      return msg.length > 60 ? msg.substring(0, 57) + '...' : msg;
-    }
-    // Default: truncate long messages
-    return msg.length > 70 ? msg.substring(0, 67) + '...' : msg;
-  };
-
-  // Format date for the briefing header
-  const day = currentTime.getDate().toString().padStart(2, '0');
-  const month = currentTime.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-  const year = currentTime.getFullYear();
-  const timeStr = currentTime.toLocaleString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZoneName: 'short'
-  });
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-24 rounded-full" />)}
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="fade-in-up">
-        <h1 className="cyber-heading text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5">LIVESCAPE MISSION CONTROL</h1>
-        <p className="text-cyber-text-secondary text-xs font-body">
-          Intelligence & Operations Hub
-        </p>
-      </div>
+    <div className="space-y-2.5">
 
-      {/* Error Banner */}
-      {error && (
-        <div className="cyber-card border-cyber-red/50 p-4 flex items-center gap-3 fade-in-up">
-          <WarningCircle size={20} className="text-cyber-red flex-shrink-0" />
-          <p className="text-sm text-cyber-red">{error}</p>
-        </div>
-      )}
-
-      {/* Today's Briefing Banner */}
-      <div className="cyber-card cyber-glow p-3 fade-in-up stagger-1">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="font-heading text-sm font-bold text-cyber-cyan mb-1.5 uppercase tracking-wide">
-              Today's Intelligence Briefing
-            </h2>
-            <div className="space-y-2 text-sm">
-              {loading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              ) : briefingItems.length > 0 ? (
-                briefingItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    {getBriefingIcon(item.type)}
-                    <span className="text-cyber-text-primary">
-                      {formatBriefingMessage(item)}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="flex items-center gap-3">
-                  <CheckCircle size={16} className="text-cyber-green" />
-                  <span className="text-cyber-text-primary">
-                    All systems operational — no new activity
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-mono font-bold text-cyber-cyan">{day}</div>
-            <div className="text-sm text-cyber-text-dim uppercase tracking-wide">{month} {year}</div>
-            <div className="text-xs text-cyber-text-dim font-mono mt-1">{timeStr}</div>
-          </div>
+      {/* ── Section 1: Status Pills ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusPill icon={<Circle size={8} weight="fill" className="text-cyber-green" />} label="Online" />
+        <StatusPill icon={<Users size={12} />} label={`${stats.activeAgents}/${stats.totalAgents} Agents`} />
+        <StatusPill icon={<Queue size={12} />} label={`${stats.tasksInQueue} Queued`} />
+        <StatusPill icon={<Folder size={12} />} label={`${stats.projects} Projects`} />
+        <StatusPill icon={<Timer size={12} />} label={`${stats.schedules} Heartbeats`} />
+        <div className="ml-auto text-[10px] text-cyber-text-dim font-mono">
+          Last updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-        <MetricCard
-          icon={<ChartLine size={22} />}
-          label="Active Projects"
-          value={loading ? '-' : stats.projects.toString()}
-          sublabel="Mission folders"
-          color="from-cyber-cyan to-blue-600"
-          delay={2}
-        />
-        <MetricCard
-          icon={<Queue size={22} />}
-          label="Tasks in Queue"
-          value={loading ? '-' : stats.tasksInQueue.toString()}
-          sublabel="Pending work items"
-          color="from-cyber-purple to-purple-600"
-          delay={3}
-        />
-        <MetricCard
-          icon={<Users size={22} />}
-          label="Agent Swarm"
-          value={loading ? '-' : stats.activeAgents.toString()}
-          sublabel="Online & ready"
-          color="from-cyber-green to-green-600"
-          delay={4}
-        />
-        <MetricCard
-          icon={<Calendar size={22} />}
-          label="Heartbeats"
-          value={loading ? '-' : stats.schedules.toString()}
-          sublabel="Automated checks"
-          color="from-cyber-yellow to-yellow-600"
-          delay={5}
-        />
-      </div>
-
-      {/* AI Team Status */}
-      <Card className="cyber-card fade-in-up stagger-6">
-        <CardHeader>
-          <CardTitle className="font-heading text-xl">AI Agent Swarm</CardTitle>
-          <CardDescription>Livescape intelligence network status</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="cyber-card p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Skeleton className="h-5 w-16" />
-                    <Skeleton className="h-2 w-2 rounded-full" />
-                  </div>
-                  <Skeleton className="h-2 w-full" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
-              ))
-            ) : agentsList.length > 0 ? (
-              agentsList.map((agent) => (
-                <AgentStatusCard
-                  key={agent.id}
-                  name={agent.name.replace('livescape-', '').toUpperCase()}
-                  status={agent.isActive ? 'online' : 'offline'}
-                  progress={agent.isActive ? 100 : 0}
-                />
-              ))
-            ) : (
-              <>
-                <AgentStatusCard name="SCOUT" status="online" progress={100} />
-                <AgentStatusCard name="PULSE" status="online" progress={100} />
-                <AgentStatusCard name="RADAR" status="online" progress={100} />
-                <AgentStatusCard name="META" status="online" progress={100} />
-                <AgentStatusCard name="AUDIT" status="online" progress={100} />
-                <AgentStatusCard name="TRENDS" status="online" progress={100} />
-                <AgentStatusCard name="BRAIN" status="online" progress={100} />
-                <AgentStatusCard name="BRAND" status="online" progress={100} />
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Alerts Banner */}
+      {/* ── Alert Banner ── */}
       {alerts.length > 0 && (
-        <div className="space-y-2 fade-in-up stagger-6">
-          {alerts.map((alert, idx) => (
+        <div className="flex flex-wrap gap-1.5">
+          {alerts.slice(0, 3).map((alert, idx) => (
             <div
               key={idx}
-              className={`cyber-card p-3 flex items-center gap-3 border-l-4 ${
-                alert.severity === 'critical'
-                  ? 'border-l-cyber-red bg-cyber-red/5'
-                  : alert.severity === 'warning'
-                  ? 'border-l-cyber-yellow bg-cyber-yellow/5'
-                  : 'border-l-cyber-cyan bg-cyber-cyan/5'
+              className={`flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-mono ${
+                alert.severity === 'critical' ? 'bg-cyber-red/10 text-cyber-red border border-cyber-red/20' :
+                alert.severity === 'warning' ? 'bg-cyber-yellow/10 text-cyber-yellow border border-cyber-yellow/20' :
+                'bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/20'
               }`}
             >
-              <ShieldWarning
-                size={18}
-                weight="fill"
-                className={
-                  alert.severity === 'critical'
-                    ? 'text-cyber-red'
-                    : alert.severity === 'warning'
-                    ? 'text-cyber-yellow'
-                    : 'text-cyber-cyan'
-                }
-              />
-              <span className="text-sm text-cyber-text-primary flex-1">{alert.message}</span>
-              <span className="text-[10px] text-cyber-text-dim font-mono uppercase">
-                {alert.severity}
-              </span>
+              <ShieldWarning size={12} weight="fill" />
+              {alert.message}
             </div>
           ))}
         </div>
       )}
 
-      {/* Cost Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 fade-in-up stagger-7">
-        <CostCard
-          label="Today's Spend"
-          value={costData ? `$${costData.today.toFixed(2)}` : '-'}
-          icon={<CurrencyDollar size={24} />}
-          loading={loading}
-        />
-        <CostCard
-          label="7-Day Spend"
-          value={costData ? `$${costData.sevenDay.toFixed(2)}` : '-'}
-          icon={<ChartBar size={24} />}
-          loading={loading}
-        />
-        <CostCard
-          label="All-Time Spend"
-          value={costData ? `$${costData.allTime.toFixed(2)}` : '-'}
-          icon={<Coin size={24} />}
-          loading={loading}
-        />
-        <CostCard
-          label="Projected / Mo"
-          value={costData ? `$${costData.projected.toFixed(2)}` : '-'}
-          icon={<TrendUp size={24} />}
-          loading={loading}
-          sublabel={costData ? `${costData.totalTokens.toLocaleString()} total tokens` : undefined}
-        />
-      </div>
+      {/* ── Section 2: Cost Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <CostCard label="Today's Cost" value={costData ? `$${costData.today.toFixed(2)}` : '$0'} sub={costData ? `${costData.totalTokens > 0 ? Math.round(costData.totalTokens * (costData.today / (costData.allTime || 1))).toLocaleString() : '0'} tokens` : ''} />
+        <CostCard label="All-Time Cost" value={costData ? `$${costData.allTime.toFixed(2)}` : '$0'} sub={costData ? `${costData.totalTokens.toLocaleString()} total tokens` : ''} />
+        <CostCard label="Projected Monthly" value={costData ? `$${costData.projected.toFixed(0)}` : '$0'} sub="Based on 30-day avg" />
 
-      {/* Cost Chart + Model Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="fade-in-up stagger-8">
-          {loading || !costData ? (
-            <Card className="cyber-card">
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-48 mt-1" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-[260px] w-full" />
-              </CardContent>
-            </Card>
-          ) : (
-            <CostTrendChart
-              data={costData.dailyTrend}
-              title="Cost Trend (7 Days)"
-              description="Daily API spend"
-            />
-          )}
-        </div>
-
-        <Card className="cyber-card fade-in-up stagger-8">
-          <CardHeader>
-            <CardTitle className="font-heading text-xl">Spend Breakdown</CardTitle>
-            <CardDescription>By model & agent</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading || !costData ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-full" />
+        {/* Cost Breakdown — mini pie */}
+        <div className="cyber-card p-3">
+          <p className="text-[10px] text-cyber-text-dim uppercase tracking-wider font-heading">Cost Breakdown</p>
+          {pieData.length > 0 ? (
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-16 h-16 flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={18} outerRadius={30} paddingAngle={2} strokeWidth={0}>
+                      {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 min-w-0 space-y-0.5">
+                {pieData.slice(0, 4).map((d, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-[9px]">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                    <span className="text-cyber-text-dim truncate">{d.name}</span>
+                    <span className="ml-auto text-cyber-text-primary font-mono">${d.value.toFixed(2)}</span>
+                  </div>
                 ))}
               </div>
-            ) : (
-              <div className="space-y-4">
-                {/* By Model */}
-                {costData.byModel.length > 0 && (
-                  <div>
-                    <h4 className="text-xs text-cyber-text-dim uppercase tracking-wider mb-2 font-heading">By Model</h4>
-                    <div className="space-y-2">
-                      {costData.byModel.slice(0, 4).map((m) => (
-                        <div key={m.model} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-cyber-cyan" />
-                            <span className="text-cyber-text-primary font-mono text-xs">
-                              {m.model.replace('claude-', '').replace('-20250514', '')}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-cyber-text-dim text-xs font-mono">
-                              {m.tokens.toLocaleString()} tok
-                            </span>
-                            <span className="text-cyber-cyan font-mono font-bold text-xs">
-                              ${m.cost.toFixed(4)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Divider */}
-                {costData.byModel.length > 0 && costData.byAgent.length > 0 && (
-                  <div className="border-t border-cyber-border" />
-                )}
-
-                {/* By Agent */}
-                {costData.byAgent.length > 0 && (
-                  <div>
-                    <h4 className="text-xs text-cyber-text-dim uppercase tracking-wider mb-2 font-heading">By Agent</h4>
-                    <div className="space-y-2">
-                      {costData.byAgent.slice(0, 6).map((a) => (
-                        <div key={a.agent} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="cyber-badge cyber-badge-info text-[9px] px-1.5 py-0.5">
-                              {a.agent}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-cyber-text-dim text-xs font-mono">
-                              {a.calls} runs
-                            </span>
-                            <span className="text-cyber-green font-mono font-bold text-xs">
-                              ${a.cost.toFixed(4)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty state */}
-                {costData.byModel.length === 0 && costData.byAgent.length === 0 && (
-                  <div className="text-center py-8">
-                    <CurrencyDollar size={32} className="text-cyber-text-dim mx-auto mb-2" />
-                    <p className="text-sm text-cyber-text-dim">No usage data yet</p>
-                    <p className="text-xs text-cyber-text-dim mt-1">
-                      Agent activity will appear here once agents run
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          ) : (
+            <p className="text-xs text-cyber-text-dim mt-2">No data</p>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
 
-function MetricCard({ icon, label, value, sublabel, color, delay }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sublabel?: string;
-  color: string;
-  delay: number;
-}) {
-  return (
-    <div className={`cyber-card cyber-glow-hover p-3 fade-in-up stagger-${delay}`}>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className={`p-1.5 rounded-lg bg-gradient-to-br ${color} bg-opacity-20`}>
-          <div className="text-cyber-cyan">
-            {icon}
+      {/* ── Section 3: Charts & Trends ── */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <h2 className="text-[10px] text-cyber-text-dim uppercase tracking-widest font-heading">Charts & Trends</h2>
+          <span className="text-[10px] text-cyber-text-dim font-mono">7 Days</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+          {/* Chart 1: Daily Cost Trend */}
+          <div className="cyber-card p-3">
+            <p className="text-[11px] text-cyber-text-primary font-heading uppercase tracking-wide mb-2">Daily Cost Trend</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={trendData}>
+                <defs>
+                  <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00d9ff" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#00d9ff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="label" stroke="#475569" fontSize={9} fontFamily="JetBrains Mono" tickLine={false} />
+                <YAxis stroke="#475569" fontSize={9} fontFamily="JetBrains Mono" tickLine={false} tickFormatter={v => `$${v}`} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '6px', color: '#e2e8f0', fontFamily: 'JetBrains Mono', fontSize: '10px' }} formatter={(v: any) => [`$${Number(v).toFixed(4)}`, 'Cost']} labelStyle={{ color: '#00d9ff', fontWeight: 600, fontSize: '10px' }} />
+                <Area type="monotone" dataKey="cost" stroke="#00d9ff" strokeWidth={2} fill="url(#costGrad)" dot={{ fill: '#00d9ff', r: 2, strokeWidth: 0 }} activeDot={{ r: 4, fill: '#00d9ff', stroke: '#0f172a', strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Chart 2: Cost by Model */}
+          <div className="cyber-card p-3">
+            <p className="text-[11px] text-cyber-text-primary font-heading uppercase tracking-wide mb-2">Cost by Model</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={modelChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" stroke="#475569" fontSize={8} fontFamily="JetBrains Mono" tickLine={false} angle={-20} textAnchor="end" height={35} />
+                <YAxis stroke="#475569" fontSize={9} fontFamily="JetBrains Mono" tickLine={false} tickFormatter={v => `$${v}`} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '6px', color: '#e2e8f0', fontFamily: 'JetBrains Mono', fontSize: '10px' }} formatter={(v: any) => [`$${Number(v).toFixed(4)}`, 'Cost']} labelStyle={{ color: '#a855f7', fontWeight: 600, fontSize: '10px' }} />
+                <Bar dataKey="cost" radius={[3, 3, 0, 0]}>
+                  {modelChartData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Chart 3: Agent Activity */}
+          <div className="cyber-card p-3">
+            <p className="text-[11px] text-cyber-text-primary font-heading uppercase tracking-wide mb-2">Agent Activity</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={agentChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" stroke="#475569" fontSize={8} fontFamily="JetBrains Mono" tickLine={false} />
+                <YAxis stroke="#475569" fontSize={9} fontFamily="JetBrains Mono" tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '6px', color: '#e2e8f0', fontFamily: 'JetBrains Mono', fontSize: '10px' }} />
+                <Legend wrapperStyle={{ fontSize: '9px', fontFamily: 'JetBrains Mono' }} />
+                <Bar dataKey="runs" name="Runs" fill="#00d9ff" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="cost" name="Cost" fill="#a855f7" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
-        <div className="text-2xl font-mono font-bold text-cyber-cyan">
-          {value}
+      </div>
+
+      {/* ── Section 4: Schedules / Cron Jobs ── */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <h2 className="text-[10px] text-cyber-text-dim uppercase tracking-widest font-heading">Cron Jobs</h2>
+          <span className="text-[10px] text-cyber-text-dim font-mono">{schedulesList.length} total</span>
+        </div>
+        <div className="cyber-card overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-cyber-border text-cyber-text-dim">
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider w-8">#</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider">Name</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider hidden sm:table-cell">Schedule</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider hidden md:table-cell">Last Run</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider hidden lg:table-cell">Agent</th>
+                <th className="text-right py-2 px-3 font-heading text-[10px] uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {schedulesList.length > 0 ? schedulesList.map((s, i) => (
+                <tr key={s.id} className="border-b border-cyber-border/50 hover:bg-cyber-bg-tertiary/30 transition-colors">
+                  <td className="py-1.5 px-3 text-cyber-text-dim font-mono">{i + 1}</td>
+                  <td className="py-1.5 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${s.enabled ? 'bg-cyber-green' : 'bg-cyber-text-dim'}`} />
+                      <span className="text-cyber-text-primary">{s.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 px-3 font-mono text-cyber-text-dim hidden sm:table-cell">{s.cronExpression || '—'}</td>
+                  <td className="py-1.5 px-3 font-mono text-cyber-text-dim hidden md:table-cell">
+                    {s.lastRun ? new Date(s.lastRun).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </td>
+                  <td className="py-1.5 px-3 hidden lg:table-cell">
+                    {s.agentId ? (
+                      <span className="cyber-badge cyber-badge-info text-[9px] px-1.5 py-0.5">{s.agentId.replace('livescape-', '').toUpperCase()}</span>
+                    ) : '—'}
+                  </td>
+                  <td className="py-1.5 px-3 text-right">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-mono ${s.enabled ? 'text-cyber-green' : 'text-cyber-text-dim'}`}>
+                      {s.enabled ? <Play size={10} weight="fill" /> : <Pause size={10} />}
+                      {s.enabled ? 'active' : 'paused'}
+                    </span>
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={6} className="py-4 px-3 text-center text-cyber-text-dim">
+                    No scheduled jobs configured
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
-      <p className="text-xs text-cyber-text-primary uppercase tracking-wide font-heading mb-0.5">
-        {label}
-      </p>
-      {sublabel && (
-        <p className="text-xs text-cyber-text-dim font-body">
-          {sublabel}
-        </p>
-      )}
+
+      {/* ── Section 5: Agent Status ── */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <h2 className="text-[10px] text-cyber-text-dim uppercase tracking-widest font-heading">Active Agents</h2>
+          <span className="text-[10px] text-cyber-text-dim font-mono">{stats.activeAgents} online, {stats.totalAgents} total</span>
+        </div>
+        <div className="cyber-card overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-cyber-border text-cyber-text-dim">
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider">Agent</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider hidden sm:table-cell">ID</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider hidden md:table-cell">Model</th>
+                <th className="text-left py-2 px-3 font-heading text-[10px] uppercase tracking-wider hidden lg:table-cell">Last Active</th>
+                <th className="text-right py-2 px-3 font-heading text-[10px] uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agentsList.map((agent) => (
+                <tr key={agent.id} className="border-b border-cyber-border/50 hover:bg-cyber-bg-tertiary/30 transition-colors">
+                  <td className="py-1.5 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${agent.isActive ? 'bg-cyber-green animate-pulse' : 'bg-cyber-text-dim'}`} />
+                      <span className="cyber-badge cyber-badge-info text-[9px] px-1.5 py-0.5">
+                        {agent.name.replace('livescape-', '').toUpperCase()}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 px-3 font-mono text-cyber-text-dim text-[10px] hidden sm:table-cell">{agent.agentId || agent.name}</td>
+                  <td className="py-1.5 px-3 font-mono text-cyber-text-dim text-[10px] hidden md:table-cell">
+                    {agent.model?.replace('claude-', '').replace(/-20\d{6}/, '') || '—'}
+                  </td>
+                  <td className="py-1.5 px-3 font-mono text-cyber-text-dim text-[10px] hidden lg:table-cell">
+                    {timeAgo(agent.lastActiveAt)}
+                  </td>
+                  <td className="py-1.5 px-3 text-right">
+                    <span className={`text-[10px] font-mono ${agent.isActive ? 'text-cyber-green' : 'text-cyber-text-dim'}`}>
+                      {agent.isActive ? 'online' : 'offline'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
 
-function AgentStatusCard({ name, status, progress }: {
-  name: string;
-  status: 'online' | 'busy' | 'offline';
-  progress: number;
-}) {
-  const statusColors = {
-    online: 'text-cyber-green',
-    busy: 'text-cyber-yellow',
-    offline: 'text-cyber-text-dim',
-  };
+/* ── Compact Sub-Components ── */
 
+function StatusPill({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="cyber-card p-3">
-      <div className="flex items-center justify-between mb-3">
-        <span className="cyber-badge cyber-badge-info text-[10px]">{name}</span>
-        <div className={`w-2 h-2 rounded-full ${statusColors[status]} ${status !== 'offline' ? 'animate-pulse' : ''}`} />
-      </div>
-      <div className="cyber-progress">
-        <div className="cyber-progress-bar" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="text-[10px] text-cyber-text-dim uppercase mt-2 font-mono">{status}</p>
+    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyber-bg-secondary border border-cyber-border rounded-full text-[11px] text-cyber-text-primary font-mono">
+      {icon}
+      {label}
     </div>
   );
 }
 
-function CostCard({ label, value, icon, loading, sublabel }: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  loading: boolean;
-  sublabel?: string;
-}) {
+function CostCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="cyber-card p-3">
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className="text-cyber-cyan opacity-60">{icon}</div>
-        <span className="text-[10px] text-cyber-text-dim uppercase tracking-wider font-heading">{label}</span>
-      </div>
-      {loading ? (
-        <Skeleton className="h-6 w-20" />
-      ) : (
-        <>
-          <div className="text-lg font-mono font-bold text-cyber-cyan">{value}</div>
-          {sublabel && (
-            <p className="text-[10px] text-cyber-text-dim font-mono mt-1">{sublabel}</p>
-          )}
-        </>
-      )}
+      <p className="text-[10px] text-cyber-text-dim uppercase tracking-wider font-heading">{label}</p>
+      <p className="text-xl font-bold text-cyber-text-primary font-mono mt-1">{value}</p>
+      {sub && <p className="text-[10px] text-cyber-text-dim font-mono mt-0.5">{sub}</p>}
     </div>
   );
 }

@@ -1,8 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 const youtubeRoutes: FastifyPluginAsync = async (fastify) => {
   // Get YouTube channel statistics by channel ID
@@ -13,20 +9,27 @@ const youtubeRoutes: FastifyPluginAsync = async (fastify) => {
     const apiKey = process.env.YOUTUBE_API_KEY;
 
     if (!apiKey) {
-      return reply.code(500).send({ error: 'YouTube API key not configured' });
+      return reply.code(500).send({ error: 'YouTube API key not configured. Set YOUTUBE_API_KEY environment variable.' });
     }
 
     try {
       const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}&key=${apiKey}`;
-      const { stdout } = await execAsync(`curl -s "${url}"`);
-      const data = JSON.parse(stdout);
+      const response = await fetch(url);
+      const data: any = await response.json();
+
+      if (data.error) {
+        fastify.log.error(data.error, 'YouTube API error');
+        return reply.code(data.error.code || 500).send({
+          error: `YouTube API: ${data.error.message || 'Unknown error'}`,
+        });
+      }
 
       if (!data.items || data.items.length === 0) {
         return reply.code(404).send({ error: 'Channel not found' });
       }
 
       const channel = data.items[0];
-      
+
       return {
         channelId: channel.id,
         title: channel.snippet.title,
@@ -55,7 +58,7 @@ const youtubeRoutes: FastifyPluginAsync = async (fastify) => {
     const apiKey = process.env.YOUTUBE_API_KEY;
 
     if (!apiKey) {
-      return reply.code(500).send({ error: 'YouTube API key not configured' });
+      return reply.code(500).send({ error: 'YouTube API key not configured. Set YOUTUBE_API_KEY environment variable.' });
     }
 
     if (!q) {
@@ -64,8 +67,15 @@ const youtubeRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(q)}&maxResults=${maxResults}&key=${apiKey}`;
-      const { stdout } = await execAsync(`curl -s "${url}"`);
-      const data = JSON.parse(stdout);
+      const response = await fetch(url);
+      const data: any = await response.json();
+
+      if (data.error) {
+        fastify.log.error(data.error, 'YouTube API error');
+        return reply.code(data.error.code || 500).send({
+          error: `YouTube API: ${data.error.message || 'Unknown error'}`,
+        });
+      }
 
       if (!data.items) {
         return { channels: [] };

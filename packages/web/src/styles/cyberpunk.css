@@ -42,6 +42,15 @@
   box-sizing: border-box;
 }
 
+/* Ensure input text is always visible */
+input, textarea, select {
+  color: var(--cyber-text-primary) !important;
+  caret-color: #ffffff;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--cyber-text-dim) !important;
+}
+
 body {
   font-family: var(--font-body);
   background: var(--cyber-bg-primary);
@@ -96,10 +105,9 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Glow Effects */
 .cyber-glow {
-  box-shadow: 
-    0 0 10px var(--cyber-cyan-glow),
-    0 0 20px rgba(0, 217, 255, 0.2),
-    inset 0 0 10px rgba(0, 217, 255, 0.1);
+  box-shadow:
+    0 0 6px rgba(0, 217, 255, 0.15),
+    inset 0 0 4px rgba(0, 217, 255, 0.05);
   border: 1px solid var(--cyber-border-strong);
 }
 

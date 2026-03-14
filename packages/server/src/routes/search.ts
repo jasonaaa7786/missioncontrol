@@ -40,7 +40,7 @@ const searchRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Search tasks
-      if (type === 'all' || type === 'artists' || type === 'campaigns') {
+      if (type === 'all' || type === 'artists' || type === 'venues' || type === 'campaigns') {
         results.tasks = await fastify.prisma.task.findMany({
           where: {
             OR: [
