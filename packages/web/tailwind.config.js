@@ -20,26 +20,27 @@ export default {
           900: '#0c4a6e',
           950: '#082f49',
         },
-        'cyber-bg-primary': '#0a0e1a',
-        'cyber-bg-secondary': '#0f172a',
-        'cyber-bg-tertiary': '#1e293b',
-        'cyber-cyan': '#00d9ff',
-        'cyber-cyan-dim': '#0891b2',
-        'cyber-magenta': '#ff00ff',
-        'cyber-purple': '#a855f7',
-        'cyber-green': '#00ff88',
-        'cyber-yellow': '#ffd700',
-        'cyber-red': '#ff3366',
-        'cyber-text-primary': '#e2e8f0',
-        'cyber-text-secondary': '#94a3b8',
-        'cyber-text-dim': '#64748b',
-        'cyber-border': 'rgba(0, 217, 255, 0.2)',
-        'cyber-border-strong': 'rgba(0, 217, 255, 0.4)',
+        // Clean neutral dark palette — replaces cyberpunk
+        'cyber-bg-primary':    '#111111',
+        'cyber-bg-secondary':  '#161616',
+        'cyber-bg-tertiary':   '#1f1f1f',
+        'cyber-cyan':          '#6366f1',   // indigo accent
+        'cyber-cyan-dim':      '#4f46e5',   // indigo darker
+        'cyber-magenta':       '#9b6dff',   // soft purple
+        'cyber-purple':        '#7c5cdb',
+        'cyber-green':         '#22c55e',   // clean green
+        'cyber-yellow':        '#f59e0b',   // amber
+        'cyber-red':           '#ef4444',   // clean red
+        'cyber-text-primary':  '#f0f0f0',
+        'cyber-text-secondary':'#a0a0a0',
+        'cyber-text-dim':      '#6b7280',
+        'cyber-border':        'rgba(255, 255, 255, 0.08)',
+        'cyber-border-strong': 'rgba(255, 255, 255, 0.15)',
       },
       fontFamily: {
-        heading: ['Orbitron', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-        body: ['Outfit', 'sans-serif'],
+        heading: ['Inter', 'system-ui', 'sans-serif'],
+        mono:    ['JetBrains Mono', 'monospace'],
+        body:    ['Inter', 'system-ui', 'sans-serif'],
       },
     },
   },
