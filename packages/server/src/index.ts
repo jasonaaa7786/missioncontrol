@@ -18,6 +18,8 @@ import youtubeRoutes from './routes/youtube.js';
 import tasksV2Routes from './routes/tasks-v2.js';
 import activityRoutes from './routes/activity.js';
 import searchRoutes from './routes/search.js';
+import spotifyRoutes from './routes/spotify.js';
+import artistRoutes from './routes/artist.js';
 import { wsBroadcast } from './utils/ws-broadcast.js';
 
 const prisma = new PrismaClient();
@@ -82,6 +84,8 @@ await fastify.register(youtubeRoutes, { prefix: '/api/youtube' });
 await fastify.register(tasksV2Routes, { prefix: '/api/tasks-v2' });
 await fastify.register(activityRoutes, { prefix: '/api/activity' });
 await fastify.register(searchRoutes, { prefix: '/api/search' });
+await fastify.register(spotifyRoutes, { prefix: '/api/spotify' });
+await fastify.register(artistRoutes, { prefix: '/api/artist' });
 
 // Attach broadcast to fastify for route access
 fastify.decorate('broadcast', wsBroadcast);

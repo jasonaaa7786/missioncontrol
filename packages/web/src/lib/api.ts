@@ -423,6 +423,72 @@ export const youtube = {
     }),
 };
 
+// Artist Research API
+export const artist = {
+  search: (artistName: string) =>
+    fetchAPI<{
+      artist: {
+        spotifyId?: string; name: string; imageUrl: string | null;
+        followers: number | null; popularity: number | null; genres: string[]; externalUrl?: string;
+      };
+      youtubeChannel: {
+        channelId: string; title: string; thumbnails: any;
+        subscribers: number; views: string;
+      } | null;
+      socialSnapshot: Record<string, any> | null;
+      previousSnapshot: Record<string, any> | null;
+    }>('/api/artist/search', {
+      method: 'POST',
+      body: JSON.stringify({ artistName }),
+    }),
+
+  getCommunities: (name: string) =>
+    fetchAPI<{
+      communities: Array<{
+        name: string; handle: string | null; followers: number | null;
+        url: string | null; platform: string; country: string | null;
+      }>;
+      total: number;
+      error?: string;
+    }>(`/api/artist/${encodeURIComponent(name)}/communities`),
+
+  getShows: (name: string) =>
+    fetchAPI<{
+      shows: Array<{
+        id: string; eventDate: string | null; venueName: string | null;
+        venueCity: string | null; venueCountry: string | null;
+        showType: string | null; capacity: number | null;
+        source: string | null; sourceUrl: string | null;
+      }>;
+      source: string;
+      message?: string;
+    }>(`/api/artist/${encodeURIComponent(name)}/shows`),
+
+  updateShowCapacity: (name: string, showId: string, capacity: number) =>
+    fetchAPI<any>(
+      `/api/artist/${encodeURIComponent(name)}/shows/${showId}`,
+      { method: 'PATCH', body: JSON.stringify({ capacity }) }
+    ),
+
+  getAgency: (name: string) =>
+    fetchAPI<{
+      agency: string | null; confidence: string;
+      sourceUrl: string | null; snippets?: Array<{ title: string; url: string }>;
+      error?: string;
+    }>(`/api/artist/${encodeURIComponent(name)}/agency`),
+};
+
+// Spotify API
+export const spotify = {
+  search: (q: string, limit = 5) =>
+    fetchAPI<{
+      artists: Array<{
+        spotifyId: string; name: string; imageUrl: string | null;
+        followers: number; popularity: number; genres: string[]; externalUrl: string | null;
+      }>;
+    }>('/api/spotify/search', { params: { q, limit: limit.toString() } }),
+};
+
 // Tasks V2 API
 export const tasksV2 = {
   list: (filters?: { projectId?: string; status?: string; assignedAgent?: string }) =>

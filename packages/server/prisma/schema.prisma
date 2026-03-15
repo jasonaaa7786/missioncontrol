@@ -182,3 +182,42 @@ model FileIndex {
   @@unique([projectId, path])
   @@index([projectId])
 }
+
+model ArtistSnapshot {
+  id                 String   @id @default(uuid())
+  artistName         String   // normalized lowercase
+  spotifyId          String?
+  youtubeChannelId   String?
+  imageUrl           String?
+
+  // Social stats at snapshot time
+  spotifyFollowers   Int?
+  spotifyPopularity  Int?
+  youtubeSubscribers Int?
+  youtubeViews       String?  // stored as string for SQLite BigInt compat
+  instagramFollowers Int?
+  tiktokFollowers    Int?
+  tiktokLikes        Int?
+  facebookPageLikes  Int?
+
+  snapshotAt         DateTime @default(now())
+
+  @@index([artistName])
+  @@index([snapshotAt])
+}
+
+model ArtistShow {
+  id           String    @id @default(uuid())
+  artistName   String    // normalized lowercase
+  eventDate    DateTime?
+  venueName    String?
+  venueCity    String?
+  venueCountry String?
+  showType     String?   // club, live_house, festival, arena, stadium, unknown
+  capacity     Int?      // user-entered or scraped
+  source       String?   // bandsintown, brave_search
+  sourceUrl    String?
+  createdAt    DateTime  @default(now())
+
+  @@index([artistName])
+}
