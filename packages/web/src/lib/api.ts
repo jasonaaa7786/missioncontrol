@@ -442,6 +442,28 @@ export const artist = {
       body: JSON.stringify({ artistName }),
     }),
 
+  getSnapshots: (name: string) =>
+    fetchAPI<{
+      snapshots: Array<{
+        snapshotAt: string;
+        youtubeSubscribers: number | null;
+        instagramFollowers: number | null;
+        tiktokFollowers: number | null;
+        facebookPageLikes: number | null;
+        spotifyFollowers: number | null;
+      }>;
+    }>(`/api/artist/${encodeURIComponent(name)}/snapshots`),
+
+  getReddit: (name: string) =>
+    fetchAPI<{
+      mentions: Array<{
+        title: string; url: string; upvotes: number; comments: number;
+        subreddit: string; date: string; sentiment: 'positive' | 'negative' | 'neutral';
+      }>;
+      sentiment: { score: number; total: number; positive: number; negative: number; neutral: number };
+      error?: string;
+    }>(`/api/artist/${encodeURIComponent(name)}/reddit`),
+
   getCommunities: (name: string) =>
     fetchAPI<{
       communities: Array<{

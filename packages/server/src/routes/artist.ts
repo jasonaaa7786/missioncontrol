@@ -386,6 +386,109 @@ const artistRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  // ── GET /api/artist/:artistName/snapshots
+  // Returns historical snapshots for the Social Growth chart
+  fastify.get<{
+    Params: { artistName: string };
+  }>('/:artistName/snapshots', async (request, reply) => {
+    const { artistName } = request.params;
+    const normalized = normalizeArtistName(artistName);
+
+    const snapshots = await (prisma as any).artistSnapshot.findMany({
+      where: { artistName: normalized },
+      orderBy: { snapshotAt: 'asc' },
+      select: {
+        snapshotAt: true,
+        youtubeSubscribers: true,
+        instagramFollowers: true,
+        tiktokFollowers: true,
+        facebookPageLikes: true,
+        spotifyFollowers: true,
+      },
+    }).catch(() => []);
+
+    return { snapshots };
+  });
+
+  // ── GET /api/artist/:artistName/reddit
+  // Reddit mentions with keyword sentiment (free API, no Apify)
+  fastify.get<{
+    Params: { artistName: string };
+  }>('/:artistName/reddit', async (request, reply) => {
+    const { artistName } = request.params;
+
+    const POSITIVE_WORDS = ['amazing', 'great', 'love', 'best', 'awesome', 'incredible', 'fire', 'legendary', 'excited', 'want', 'can\'t wait', 'hype', 'banger', 'goat', 'epic', 'fantastic', 'brilliant', 'perfect', 'genius'];
+    const NEGATIVE_WORDS = ['bad', 'worst', 'hate', 'boring', 'disappointed', 'overrated', 'trash', 'garbage', 'terrible', 'awful', 'mediocre', 'disappointing', 'skip', 'avoid', 'meh'];
+
+    function getSentiment(text: string): 'positive' | 'negative' | 'neutral' {
+      const lower = text.toLowerCase();
+      const posScore = POSITIVE_WORDS.filter(w => lower.includes(w)).length;
+      const negScore = NEGATIVE_WORDS.filter(w => lower.includes(w)).length;
+      if (posScore > negScore) return 'positive';
+      if (negScore > posScore) return 'negative';
+      return 'neutral';
+    }
+
+    try {
+      // Use free Reddit JSON API — no auth needed
+      const queries = [
+        `${artistName} site:reddit.com`,
+        `${artistName} subreddit:malaysia OR subreddit:singapore OR subreddit:indonesia OR subreddit:EDM OR subreddit:Trance`,
+      ];
+
+      const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(artistName)}&limit=25&sort=new&t=year`;
+      const res = await fetch(redditUrl, {
+        headers: {
+          'User-Agent': 'MissionControl/1.0 (artist-research)',
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!res.ok) throw new Error(`Reddit API error: ${res.status}`);
+      const data: any = await res.json();
+      const posts = data?.data?.children || [];
+
+      const mentions = posts
+        .filter((p: any) => p.data?.title && p.data?.score >= 1)
+        .slice(0, 20)
+        .map((p: any) => {
+          const post = p.data;
+          const titleText = `${post.title} ${post.selftext || ''}`;
+          return {
+            title: post.title,
+            url: `https://reddit.com${post.permalink}`,
+            upvotes: post.score || 0,
+            comments: post.num_comments || 0,
+            subreddit: post.subreddit,
+            date: new Date(post.created_utc * 1000).toISOString(),
+            sentiment: getSentiment(titleText),
+          };
+        });
+
+      const positive = mentions.filter((m: any) => m.sentiment === 'positive').length;
+      const negative = mentions.filter((m: any) => m.sentiment === 'negative').length;
+      const neutral = mentions.filter((m: any) => m.sentiment === 'neutral').length;
+
+      return {
+        mentions,
+        sentiment: {
+          score: positive - negative,
+          total: mentions.length,
+          positive,
+          negative,
+          neutral,
+        },
+      };
+    } catch (err: any) {
+      fastify.log.error(err, 'Reddit search failed');
+      return {
+        mentions: [],
+        sentiment: { score: 0, total: 0, positive: 0, negative: 0, neutral: 0 },
+        error: 'Reddit search temporarily unavailable',
+      };
+    }
+  });
+
   // ── GET /api/artist/:artistName/agency
   fastify.get<{
     Params: { artistName: string };
